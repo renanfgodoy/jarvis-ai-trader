@@ -1,1 +1,1 @@
-"""Business services package."""
+"""Camada de serviços do J.A.R.V.I.S AI TRADER."""

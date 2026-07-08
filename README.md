@@ -60,3 +60,45 @@ pytest
 ## Aviso operacional
 
 Os candles da Sprint 2 são simulados. Eles servem apenas para validar arquitetura e fluxo técnico. Não devem ser usados como sinal real de operação.
+
+
+## Sprint 3 — AI Decision Engine V1
+
+Esta Sprint adiciona o primeiro motor de decisão do sistema.
+
+O J.A.R.V.I.S passa a analisar os candles do Market Reader e retornar uma decisão probabilística:
+
+- BUY
+- SELL
+- WAIT
+- score
+- confiança
+- tendência
+- momentum
+- volatilidade
+- motivos técnicos
+- alertas de risco
+
+Novo endpoint:
+
+```text
+GET /api/v1/ai/decision
+```
+
+Como testar:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest
+python -m uvicorn app.main:app --reload
+```
+
+Acesse:
+
+```text
+http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/api/v1/ai/decision
+```
+
+Status: Sprint 3 pronta para validação local.
