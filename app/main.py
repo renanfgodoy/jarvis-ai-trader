@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
             "message": "J.A.R.V.I.S AI TRADER online",
             "version": settings.app_version,
             "docs": "/docs",
+            "market_snapshot": f"{settings.api_prefix}/market/snapshot",
         }
 
     return app

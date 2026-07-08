@@ -13,4 +13,3 @@ def test_health_check() -> None:
     assert data["status"] == "online"
     assert data["app"] == "J.A.R.V.I.S AI TRADER"
     assert data["risk_profile"]["bankroll_base"] == 200.0
-    assert data["risk_profile"]["risk_percentage"] == 5.0

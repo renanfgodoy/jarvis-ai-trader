@@ -1,36 +1,17 @@
 from fastapi import APIRouter
 
+from app.core.config import settings
+
 router = APIRouter(prefix="/system", tags=["System"])
 
 
-@router.get("/architecture")
-def get_architecture() -> dict:
-    """Retorna a visão arquitetural inicial da plataforma."""
+@router.get("/info")
+def system_info() -> dict:
+    """Retorna informações básicas do sistema."""
     return {
-        "flow": [
-            "Dashboard",
-            "API",
-            "AI Decision Engine",
-            "Market Reader",
-            "Database",
-            "Machine Learning",
-            "Backtesting",
-        ],
-        "modules": [
-            "market_reader",
-            "decision_engine",
-            "risk_manager",
-            "trade_journal",
-            "statistics_engine",
-            "backtesting",
-            "ml_engine",
-        ],
-        "principles": [
-            "SOLID",
-            "Clean Code",
-            "Modular Architecture",
-            "Low Coupling",
-            "High Scalability",
-            "Testable Code",
-        ],
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "api_prefix": settings.api_prefix,
+        "default_market_provider": settings.default_market_provider,
     }

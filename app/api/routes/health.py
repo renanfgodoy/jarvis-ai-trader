@@ -1,14 +1,13 @@
 from fastapi import APIRouter
 
 from app.core.config import settings
-from app.core.constants import OFFICIAL_PHRASES
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
 
 @router.get("")
 def health_check() -> dict:
-    """Confirma que a API está online e retorna informações básicas do sistema."""
+    """Verifica se a API está online e retorna regras oficiais de risco."""
     return {
         "status": "online",
         "app": settings.app_name,
@@ -20,5 +19,8 @@ def health_check() -> dict:
             "max_daily_wins": settings.max_daily_wins,
             "max_daily_losses": settings.max_daily_losses,
         },
-        "official_phrases": OFFICIAL_PHRASES,
+        "official_phrases": [
+            "Primeiro proteger a banca. Depois crescer a banca.",
+            "Não buscamos mais operações. Buscamos operações melhores.",
+        ],
     }
