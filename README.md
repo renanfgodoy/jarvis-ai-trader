@@ -33,21 +33,3 @@ source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
-
-Acesse:
-
-```text
-http://127.0.0.1:8000
-http://127.0.0.1:8000/docs
-http://127.0.0.1:8000/api/v1/health
-```
-
-## Como testar
-
-```bash
-pytest
-```
-
-## Status
-
-Sprint 1 finalizada como base arquitetural inicial.
