@@ -231,3 +231,19 @@ body {
 .opportunity-card h4 {
   font-size: 1rem;
 }
+
+/* V0.18.0 — Polarium Login Panel */
+.login-input {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(2, 6, 23, 0.54);
+  padding: 10px 12px;
+  color: rgb(241,245,249);
+  font-size: 13px;
+  outline: none;
+}
+.login-input:focus {
+  border-color: rgba(34,211,238,0.45);
+  box-shadow: 0 0 0 1px rgba(34,211,238,0.16);
+}

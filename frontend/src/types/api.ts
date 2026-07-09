@@ -4,6 +4,8 @@ export type AccountType = 'DEMO' | 'REAL';
 
 
 export type DataQuality = 'SIMULATED' | 'REAL' | 'DELAYED' | 'UNAVAILABLE';
+export type PolariumDataSource = 'REAL_SESSION' | 'DEVTOOLS_PAYLOAD' | 'SIMULATED' | 'CACHE' | 'UNAVAILABLE';
+export type PolariumSyncStatus = 'SYNCED' | 'NOT_SYNCED' | 'FAILED' | 'CACHE_ONLY';
 
 export type MarketAsset = {
   symbol: string;
@@ -241,9 +243,142 @@ export type MarketIntelligenceScannerResponse = {
   results: MarketIntelligence[];
 };
 
+
+export type PolariumAccountState = {
+  connected: boolean;
+  status: 'CONNECTED' | 'DISCONNECTED' | 'BLOCKED';
+  account_mode: AccountType;
+  currency?: AccountCurrency | null;
+  currency_symbol?: string | null;
+  balance?: number | null;
+  minimum_entry?: number | null;
+  demo_only: boolean;
+  email_masked?: string | null;
+  session_cached: boolean;
+  session_id?: string | null;
+  provider: string;
+  data_source: PolariumDataSource;
+  sync_status: PolariumSyncStatus;
+  is_balance_synced: boolean;
+  last_sync?: string | null;
+  last_sync_error?: string | null;
+  warnings: string[];
+  safety_rules: string[];
+};
+
+export type PolariumLoginRequest = {
+  email: string;
+  password: string;
+  force_demo?: boolean;
+  remember_session?: boolean;
+};
+
+export type PolariumLoginResponse = {
+  success: boolean;
+  message: string;
+  account: PolariumAccountState;
+};
+
+export type PolariumSyncResponse = {
+  success: boolean;
+  message: string;
+  account: PolariumAccountState;
+};
+
+export type PolariumLogoutResponse = {
+  success: boolean;
+  message: string;
+};
+
 export type HealthResponse = {
   status: string;
   app: string;
   version: string;
   environment?: string;
+};
+
+
+export type PolariumWsDebugRequest = {
+  payload: Record<string, unknown>;
+  force_demo?: boolean;
+};
+
+export type PolariumWsDebugResponse = {
+  accepted: boolean;
+  message: string;
+  account: PolariumAccountState;
+};
+
+export type PolariumOAuthConfig = {
+  configured: boolean;
+  client_id_configured: boolean;
+  authorize_url_configured: boolean;
+  token_url_configured: boolean;
+  redirect_uri: string;
+  token_url: string;
+  authorize_url?: string | null;
+  message: string;
+};
+
+export type PolariumPkceStartResponse = {
+  ready: boolean;
+  status: 'READY' | 'MISSING_CONFIG' | 'TOKEN_STORED' | 'EXCHANGE_FAILED' | 'CALLBACK_RECEIVED';
+  state: string;
+  code_verifier_preview: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  redirect_uri: string;
+  authorize_url?: string | null;
+  message: string;
+  warnings: string[];
+};
+
+export type PolariumOAuthSessionState = {
+  has_token: boolean;
+  status: 'READY' | 'MISSING_CONFIG' | 'TOKEN_STORED' | 'EXCHANGE_FAILED' | 'CALLBACK_RECEIVED';
+  token_type?: string | null;
+  expires_at?: string | null;
+  scope?: string | null;
+  last_error?: string | null;
+  message: string;
+  safety_rules: string[];
+};
+
+
+export type PolariumDirectConfig = {
+  configured: boolean;
+  login_url_configured: boolean;
+  email_configured: boolean;
+  password_configured: boolean;
+  websocket_url_configured: boolean;
+  login_url?: string | null;
+  websocket_url?: string | null;
+  message: string;
+  safety_rules: string[];
+};
+
+export type PolariumDirectProbeRequest = {
+  dry_run: boolean;
+  force_demo?: boolean;
+};
+
+export type PolariumDirectProbeResponse = {
+  success: boolean;
+  status: 'READY' | 'MISSING_CONFIG' | 'DRY_RUN' | 'LOGIN_FAILED' | 'SESSION_STORED' | 'NOT_AUTHORIZED';
+  dry_run: boolean;
+  token_stored: boolean;
+  token_type?: string | null;
+  response_keys: string[];
+  http_status?: number | null;
+  message: string;
+  warnings: string[];
+};
+
+export type PolariumDirectSessionState = {
+  has_session: boolean;
+  status: 'READY' | 'MISSING_CONFIG' | 'DRY_RUN' | 'LOGIN_FAILED' | 'SESSION_STORED' | 'NOT_AUTHORIZED';
+  token_type?: string | null;
+  response_keys: string[];
+  message: string;
+  safety_rules: string[];
 };

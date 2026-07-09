@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Bot, CircleDot, Download, TrendingUp } from 'lucide-react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -10,7 +10,9 @@ import ChartCard from '../components/ChartCard';
 import RiskCard from '../components/RiskCard';
 import Timeline from '../components/Timeline';
 import TimeframeControl from '../components/TimeframeControl';
-import { checkAutoTradeGate, getCurrentProvider, getExecutionStatus, getHealth, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getRiskCheck, getSignalAnalysis } from '../services/api';
+import PolariumLoginPanel from '../components/PolariumLoginPanel';
+import PolariumOAuthLabPanel from '../components/PolariumOAuthLabPanel';
+import { checkAutoTradeGate, debugPolariumWsMessage, getCurrentProvider, getExecutionStatus, getHealth, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getPolariumStatus, getRiskCheck, getSignalAnalysis, loginPolarium, logoutPolarium, syncPolarium } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
@@ -18,8 +20,38 @@ export default function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe | null>(null);
   const [autoTradeEnabled, setAutoTradeEnabled] = useState(false);
   const [accountCurrency, setAccountCurrency] = useState<AccountCurrency>('BRL');
-  const entryValue = accountCurrency === 'BRL' ? 10 : 1;
+  const queryClient = useQueryClient();
+  const polarium = useQuery({ queryKey: ['polarium-status'], queryFn: getPolariumStatus, refetchInterval: 5000 });
+  const polariumLogin = useMutation({
+    mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) => loginPolarium({ email, password, remember_session: remember, force_demo: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
+  });
+  const polariumLogout = useMutation({
+    mutationFn: logoutPolarium,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
+  });
+  const polariumSync = useMutation({
+    mutationFn: syncPolarium,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
+  });
+  const polariumPayloadIngest = useMutation({
+    mutationFn: (payloadText: string) => {
+      const parsed = JSON.parse(payloadText);
+      return debugPolariumWsMessage({ payload: parsed, force_demo: true });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
+  });
+  const effectiveAccount = polarium.data;
+  const syncedAccount = Boolean(effectiveAccount?.is_balance_synced && ['REAL_SESSION', 'DEVTOOLS_PAYLOAD'].includes(effectiveAccount?.data_source ?? '')); 
+  const resolvedCurrency = syncedAccount && effectiveAccount?.currency ? effectiveAccount.currency : accountCurrency;
+  const entryValue = resolvedCurrency === 'BRL' ? Math.max(10, effectiveAccount?.minimum_entry ?? 5) : Math.max(1, effectiveAccount?.minimum_entry ?? 1);
   const activeTimeframe = selectedTimeframe ?? 'M1';
+
+  useEffect(() => {
+    if (syncedAccount && effectiveAccount?.currency) {
+      setAccountCurrency(effectiveAccount.currency);
+    }
+  }, [effectiveAccount?.currency, syncedAccount]);
 
   const health = useQuery({ queryKey: ['health'], queryFn: getHealth, refetchInterval: 5000 });
   const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider, refetchInterval: 5000 });
@@ -30,7 +62,7 @@ export default function Dashboard() {
     refetchInterval: 3000,
     enabled: Boolean(selectedTimeframe)
   });
-  const risk = useQuery({ queryKey: ['risk', accountCurrency, entryValue], queryFn: () => getRiskCheck(accountCurrency, entryValue), refetchInterval: 5000 });
+  const risk = useQuery({ queryKey: ['risk', resolvedCurrency, entryValue], queryFn: () => getRiskCheck(resolvedCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
 
   const assetMeta = useMemo(() => new Map((marketAssets.data?.assets ?? []).map((asset) => [asset.symbol, asset])), [marketAssets.data]);
@@ -67,25 +99,43 @@ export default function Dashboard() {
     enabled: Boolean(selectedTimeframe)
   });
 
+  const hasGatePayload = Boolean(
+    autoTradeEnabled &&
+    selectedTimeframe &&
+    activeSymbol &&
+    syncedAccount &&
+    effectiveAccount?.account_mode === 'DEMO' &&
+    resolvedCurrency &&
+    typeof effectiveAccount?.balance === 'number' &&
+    effectiveAccount.balance > 0 &&
+    entryValue > 0 &&
+    typeof selectedAsset.score === 'number' &&
+    (execution.data?.status ?? 'READY') === 'READY'
+  );
+
   const gate = useQuery({
-    queryKey: ['autotrade-gate', activeSymbol, selectedTimeframe, accountCurrency, entryValue, autoTradeEnabled, selectedAsset.score, risk.data?.allowed, execution.data?.status],
+    queryKey: ['autotrade-gate', activeSymbol, selectedTimeframe, resolvedCurrency, entryValue, autoTradeEnabled, selectedAsset.score, risk.data?.allowed, execution.data?.status, syncedAccount, effectiveAccount?.balance],
     queryFn: () => checkAutoTradeGate({
       symbol: activeSymbol,
       timeframe: selectedTimeframe,
-      account_type: 'DEMO',
-      currency: accountCurrency,
-      balance: 200,
+      account_type: effectiveAccount?.account_mode ?? 'DEMO',
+      currency: resolvedCurrency,
+      balance: typeof effectiveAccount?.balance === 'number' ? effectiveAccount.balance : 0,
       entry_value: entryValue,
       score: Math.round(selectedAsset.score ?? 0),
       minimum_score: 80,
-      risk_approved: Boolean(risk.data?.allowed ?? true),
+      risk_approved: Boolean((risk.data?.allowed ?? true) && syncedAccount),
       websocket_online: true,
       execution_ready: (execution.data?.status ?? 'READY') === 'READY',
       asset_valid: Boolean(activeSymbol),
       autotrade_requested: autoTradeEnabled
     }),
-    refetchInterval: 2500
+    enabled: hasGatePayload,
+    refetchInterval: hasGatePayload ? 2500 : false,
+    retry: false
   });
+
+  const gateStatus = gate.data?.status ?? (autoTradeEnabled ? 'BLOCKED' : 'WAITING');
 
   return (
     <div className="min-h-screen bg-[#05051f] text-slate-200">
@@ -104,7 +154,7 @@ export default function Dashboard() {
               }}
               autoTradeEnabled={autoTradeEnabled}
               onToggleAutoTrade={() => setAutoTradeEnabled((current) => !current)}
-              gateStatus={gate.data?.status}
+              gateStatus={gateStatus}
             />
 
             <TopAssets
@@ -119,7 +169,7 @@ export default function Dashboard() {
             <TradeCommandBar
               selectedAsset={selectedAsset}
               timeframe={selectedTimeframe}
-              countdown={gate.data?.status ?? 'WAITING'}
+              countdown={gateStatus}
               autoTradeEnabled={autoTradeEnabled}
               gateAllowed={Boolean(gate.data?.allowed)}
             />
@@ -128,12 +178,21 @@ export default function Dashboard() {
               <div className="min-w-0 space-y-3">
                 <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
                 <div className="grid gap-3 xl:grid-cols-[1.05fr_0.9fr_1.25fr]">
-                  <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={accountCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} />
+                  <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={resolvedCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} accountConnected={Boolean(effectiveAccount?.connected)} balance={syncedAccount && typeof effectiveAccount?.balance === 'number' ? effectiveAccount.balance : 0} />
                   <StatsPanel />
                   <CompactLog />
                 </div>
               </div>
               <aside className="space-y-3 xl:sticky xl:top-3 xl:self-start">
+                <PolariumLoginPanel
+                  account={polarium.data}
+                  loading={polariumLogin.isPending || polariumLogout.isPending || polariumSync.isPending || polariumPayloadIngest.isPending}
+                  onLogin={(email, password, remember) => polariumLogin.mutate({ email, password, remember })}
+                  onLogout={() => polariumLogout.mutate()}
+                  onSync={() => polariumSync.mutate()}
+                  onIngestPayload={(payloadText) => polariumPayloadIngest.mutate(payloadText)}
+                />
+                <PolariumOAuthLabPanel />
                 <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
@@ -197,22 +256,23 @@ function CompactLog() {
   );
 }
 
-function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, entryValue, gateAllowed }: { selectedAsset: AssetScannerResult; timeframe: Timeframe | null; currency: AccountCurrency; setCurrency: (currency: AccountCurrency) => void; entryValue: number; gateAllowed: boolean }) {
+function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, entryValue, gateAllowed, accountConnected, balance }: { selectedAsset: AssetScannerResult; timeframe: Timeframe | null; currency: AccountCurrency; setCurrency: (currency: AccountCurrency) => void; entryValue: number; gateAllowed: boolean; accountConnected: boolean; balance: number }) {
   return (
     <div className="panel p-3">
       <p className="eyebrow">Trading Panel</p>
       <h3 className="mt-1 text-sm font-black text-white">{selectedAsset.symbol} · {timeframe ?? 'Selecione M1/M5/M15'}</h3>
       <div className="mt-3 grid grid-cols-4 gap-2 text-center">
         <Info label="Moeda" value={currency} color="cyan" />
+        <Info label="Saldo" value={`${currency === 'BRL' ? 'R$' : 'US$'}${balance.toFixed(2)}`} color={accountConnected ? 'green' : 'amber'} />
         <Info label="Entrada" value={`${currency === 'BRL' ? 'R$' : 'US$'}${entryValue}`} color="cyan" />
         <Info label="Mínimo" value={currency === 'BRL' ? 'R$5' : 'US$1'} color="amber" />
-        <Info label="Gate" value={gateAllowed ? 'OK' : 'WAIT'} color={gateAllowed ? 'green' : 'amber'} />
+        
       </div>
       <div className="mt-3 flex gap-2">
         <button onClick={() => setCurrency('BRL')} className={`toolbar-btn ${currency === 'BRL' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta BRL</button>
         <button onClick={() => setCurrency('USD')} className={`toolbar-btn ${currency === 'USD' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta USD</button>
       </div>
-      <p className="mt-3 text-[11px] text-slate-500">DEMO obrigatório. Timeframe analisa automaticamente; AutoTrade só executa se o gate aprovar.</p>
+      <p className="mt-3 text-[11px] text-slate-500">DEMO obrigatório. V0.21 usa OAuth/PKCE; não usa senha direta nem Swagger no fluxo normal.</p>
     </div>
   );
 }
