@@ -106,18 +106,25 @@ export default function Dashboard() {
               gateStatus={gate.data?.status}
             />
 
-            <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-              <TopAssets assets={assets} selectedSymbol={activeSymbol} onSelect={setSelectedSymbol} dataQuality={marketAssets.data?.data_quality ?? 'SIMULATED'} totalAssets={marketAssets.data?.total_assets ?? 0} openAssets={marketAssets.data?.open_assets ?? 0} />
+            <TopAssets
+              assets={assets}
+              selectedSymbol={activeSymbol}
+              onSelect={setSelectedSymbol}
+              dataQuality={marketAssets.data?.data_quality ?? 'SIMULATED'}
+              totalAssets={marketAssets.data?.total_assets ?? 0}
+              openAssets={marketAssets.data?.open_assets ?? 0}
+            />
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_390px]">
               <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
+              <div className="grid gap-4 content-start">
+                <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe && autoTradeEnabled)} />
+                <RiskCard risk={risk.data} compact />
+                <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
+              </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
-              <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe && autoTradeEnabled)} />
-              <RiskCard risk={risk.data} compact />
-              <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[0.8fr_0.8fr_1.4fr]">
+            <div className="grid gap-4 xl:grid-cols-[0.85fr_0.75fr_1.4fr]">
               <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={accountCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} />
               <StatsPanel />
               <Timeline />

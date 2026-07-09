@@ -400,3 +400,12 @@ Esta versão adiciona a fundação para dados reais de mercado:
 - Dashboard exibindo claramente quando os dados ainda são simulados.
 
 Regra: não executar ordem real nesta fase.
+
+
+## V0.16.1 — Opportunity Cards Carousel + Chart Below
+
+- Top 12 oportunidades agora aparecem como cards premium em carrossel horizontal.
+- Exibição de 3 cards por página em desktop, com scroll horizontal.
+- Clique no card sincroniza ativo, gráfico, IA e AutoTrade Gate.
+- Gráfico foi reposicionado abaixo dos cards para virar o foco operacional da tela.
+- Layout preparado para trabalhar melhor em M1, M5 e M15.
