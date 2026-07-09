@@ -257,3 +257,46 @@ Resultado esperado dos testes:
 ```text
 43 passed
 ```
+
+
+## Sprint 11 — Premium Dashboard V1
+
+A Sprint 11 adiciona o primeiro frontend do J.A.R.V.I.S AI TRADER.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Acesse:
+
+```text
+http://127.0.0.1:5173
+```
+
+### Backend
+
+```bash
+source .venv/bin/activate
+python -m uvicorn app.main:app --reload
+```
+
+Acesse:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Status da Sprint 11
+
+- React + TypeScript + Vite
+- TailwindCSS
+- Axios
+- React Query
+- Recharts
+- Dashboard premium inicial
+- Integração com API local
+- CORS liberado para desenvolvimento local
