@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
             "risk_check": f"{settings.api_prefix}/risk/check",
             "tradingview_webhook": f"{settings.api_prefix}/providers/tradingview/webhook",
             "signal_analyze": f"{settings.api_prefix}/signal/analyze",
+            "quadcode_status": f"{settings.api_prefix}/quadcode/status",
         }
 
     return app

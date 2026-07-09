@@ -223,3 +223,37 @@ Resultado esperado:
 ```text
 37 passed
 ```
+
+
+## Sprint 10 — Quadcode / Polarium DEMO Adapter
+
+Esta Sprint adiciona uma camada segura para futura integração com a Polarium/Quadcode em conta DEMO.
+
+### Novos endpoints
+
+```text
+GET  /api/v1/quadcode/status
+POST /api/v1/quadcode/demo/connect
+POST /api/v1/quadcode/demo/disconnect
+GET  /api/v1/quadcode/symbols
+POST /api/v1/quadcode/demo/order
+```
+
+### Regra de segurança
+
+Nenhuma ordem real é enviada nesta Sprint. O adapter opera somente em `DEMO/DRY_RUN`.
+
+### Como testar
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest
+python -m uvicorn app.main:app --reload
+```
+
+Resultado esperado dos testes:
+
+```text
+43 passed
+```
