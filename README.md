@@ -102,3 +102,42 @@ http://127.0.0.1:8000/api/v1/ai/decision
 ```
 
 Status: Sprint 3 pronta para validação local.
+
+## Sprint 4 — Risk Manager Foundation
+
+Esta Sprint adiciona a primeira camada oficial de proteção de banca do sistema.
+
+O Risk Manager valida uma possível operação antes de qualquer decisão operacional, respeitando as regras oficiais:
+
+- Entrada máxima de 5% da banca
+- Stop após 3 WINs
+- Stop após 2 LOSSes
+- Gale máximo permitido: 1
+- Risk Score entre 0 e 100
+- Bloqueio de cenários fora da gestão
+
+Novo endpoint:
+
+```text
+GET /api/v1/risk/check
+```
+
+Como testar:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest
+python -m uvicorn app.main:app --reload
+```
+
+Acesse:
+
+```text
+http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/api/v1/risk/check
+http://127.0.0.1:8000/api/v1/risk/check?daily_losses=2
+http://127.0.0.1:8000/api/v1/risk/check?daily_wins=3
+```
+
+Status: Sprint 4 pronta para validação local.

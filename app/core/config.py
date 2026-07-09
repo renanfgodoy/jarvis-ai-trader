@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     """Centraliza as configurações principais do projeto."""
 
     app_name: str = "J.A.R.V.I.S AI TRADER"
-    app_version: str = "0.3.0"
+    app_version: str = "0.4.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
 
@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     risk_percentage: float = 5.0
     max_daily_wins: int = 3
     max_daily_losses: int = 2
+    max_gale_allowed: int = 1
+    minimum_payout: float = 75.0
 
     default_market_provider: str = "simulated"
     default_symbol: str = "EURUSD-OTC"
