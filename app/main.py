@@ -24,6 +24,7 @@ def create_app() -> FastAPI:
             "ai_decision": f"{settings.api_prefix}/ai/decision",
             "risk_check": f"{settings.api_prefix}/risk/check",
             "tradingview_webhook": f"{settings.api_prefix}/providers/tradingview/webhook",
+            "signal_analyze": f"{settings.api_prefix}/signal/analyze",
         }
 
     return app

@@ -71,3 +71,33 @@ class ProviderInfo(BaseModel):
     type: str
     status: str
     description: str
+
+
+class ProviderCurrentResponse(BaseModel):
+    """Provider ativo atualmente usado pelo sistema."""
+
+    provider: str
+    display_name: str
+    connected: bool
+    status: str
+    supports_realtime: bool = Field(alias="supportsRealtime")
+    supports_trading: bool = Field(alias="supportsTrading")
+    account_mode: str = Field(alias="accountMode")
+    health: dict
+
+    model_config = {"populate_by_name": True}
+
+
+class ProviderManagerItem(BaseModel):
+    """Item de listagem do Provider Manager."""
+
+    name: str
+    display_name: str
+    status: str
+    active: bool
+    connected: bool
+    supports_realtime: bool = Field(alias="supportsRealtime")
+    supports_trading: bool = Field(alias="supportsTrading")
+    description: str
+
+    model_config = {"populate_by_name": True}
