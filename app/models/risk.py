@@ -1,5 +1,6 @@
 from typing import Literal
 
+from app.models.account import AccountCurrency
 from pydantic import BaseModel, Field, model_validator
 
 RiskDecision = Literal["APPROVED", "BLOCKED"]
@@ -15,6 +16,7 @@ class RiskCheckRequest(BaseModel):
     daily_losses: int = Field(default=0, ge=0, description="Quantidade de LOSSes no dia")
     gale_used: int = Field(default=0, ge=0, description="Quantidade de gales já usados na operação")
     payout: float = Field(default=80.0, ge=0, le=100, description="Payout estimado da operação")
+    account_currency: AccountCurrency = Field(default="BRL", description="Moeda da conta: BRL ou USD")
 
     @model_validator(mode="after")
     def validate_entry_value(self) -> "RiskCheckRequest":
@@ -40,5 +42,8 @@ class RiskCheckResponse(BaseModel):
     rules_checked: list[str]
     reasons: list[str]
     warnings: list[str]
+    account_currency: AccountCurrency = "BRL"
+    minimum_entry: float = 5.0
+    currency_symbol: str = "R$"
     official_rule: str = "Primeiro proteger a banca. Depois crescer a banca."
     disclaimer: str = "Controle de risco simulado para desenvolvimento. Não é recomendação financeira."

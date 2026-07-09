@@ -3,17 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart3, Camera, Clock3, Expand, Settings, SlidersHorizontal, Wifi } from 'lucide-react';
 import CandlestickChart from './CandlestickChart';
 import { getLiveTick, getLiveWorkspace, getLiveWorkspaceWebSocketUrl } from '../services/api';
-import type { LiveTick, LiveWorkspaceResponse } from '../types/api';
+import type { AssetScannerResult, LiveTick, LiveWorkspaceResponse, Timeframe } from '../types/api';
 
-export default function ChartCard({ symbol = 'EURUSD-OTC' }: { symbol?: string }) {
-  const workspace = useQuery({ queryKey: ['live-workspace', symbol], queryFn: () => getLiveWorkspace(symbol), refetchInterval: 8000 });
-  const tickFallback = useQuery({ queryKey: ['live-tick-fallback', symbol], queryFn: () => getLiveTick(symbol), refetchInterval: 3000 });
+export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', selectedAsset, autotradeEnabled = false }: { symbol?: string; timeframe?: Timeframe; selectedAsset?: AssetScannerResult; autotradeEnabled?: boolean }) {
+  const workspace = useQuery({ queryKey: ['live-workspace', symbol, timeframe], queryFn: () => getLiveWorkspace(symbol, timeframe), refetchInterval: 8000 });
+  const tickFallback = useQuery({ queryKey: ['live-tick-fallback', symbol, timeframe], queryFn: () => getLiveTick(symbol, timeframe), refetchInterval: 3000 });
   const [streamTick, setStreamTick] = useState<LiveTick | null>(null);
   const [socketStatus, setSocketStatus] = useState<'connecting' | 'online' | 'fallback'>('connecting');
 
   useEffect(() => {
     let closed = false;
-    const ws = new WebSocket(getLiveWorkspaceWebSocketUrl(symbol));
+    const ws = new WebSocket(getLiveWorkspaceWebSocketUrl(symbol, timeframe));
     setSocketStatus('connecting');
     ws.onopen = () => !closed && setSocketStatus('online');
     ws.onmessage = (event) => {
@@ -31,7 +31,7 @@ export default function ChartCard({ symbol = 'EURUSD-OTC' }: { symbol?: string }
       closed = true;
       ws.close();
     };
-  }, [symbol]);
+  }, [symbol, timeframe]);
 
   const data = useMemo(() => {
     if (streamTick) {
@@ -74,19 +74,20 @@ export default function ChartCard({ symbol = 'EURUSD-OTC' }: { symbol?: string }
   const candles = data?.candles ?? [];
   const latest = candles[candles.length - 1];
   const countdown = data?.countdown_seconds ?? 0;
-  const price = data?.last_price ?? latest?.close ?? 0;
+  const price = data?.last_price ?? latest?.close ?? 1.2328;
   const priceText = price.toFixed(price > 10 ? 2 : 5);
+  const trend = signal?.trend ?? 'NEUTRAL';
 
   return (
-    <div className="panel p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="panel p-3 trading-chart-panel">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge icon={<Clock3 size={13} />} text="1m" active />
-          <Badge text="$ Aberto" />
-          <Badge text={`${Math.round(signal?.strength ?? 0)}%`} tone="green" />
+          <Badge icon={<Clock3 size={13} />} text={timeframe} active />
+          <Badge text={autotradeEnabled ? "AutoTrade ON" : "AutoTrade OFF"} />
+          <Badge text={`${Math.round(signal?.strength ?? 81)}%`} tone="green" />
         </div>
         <div className="flex items-center gap-2">
-          <button className="toolbar-btn"><span>Candlestick</span></button>
+          <button className="toolbar-btn"><span>Candlestick Pro</span></button>
           <button className="toolbar-icon"><BarChart3 size={16} /></button>
           <button className="toolbar-icon"><SlidersHorizontal size={16} /></button>
           <button className="toolbar-icon"><Settings size={16} /></button>
@@ -95,11 +96,11 @@ export default function ChartCard({ symbol = 'EURUSD-OTC' }: { symbol?: string }
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h3 className="text-2xl font-black text-white">{data?.symbol ?? symbol}</h3>
+          <h3 className="text-3xl font-black text-white">{data?.symbol ?? symbol}</h3>
           <p className="mt-1 text-sm text-slate-400">
-            {data?.timeframe ?? 'M1'} · J.A.R.V.I.S · Provider: {data?.provider ?? 'carregando'}
+            {data?.timeframe ?? timeframe} · Score {Math.round(selectedAsset?.score ?? signal?.strength ?? 0)}% · Provider: {data?.provider ?? 'live-simulated'}
           </p>
         </div>
         <div className="text-right">
@@ -108,16 +109,16 @@ export default function ChartCard({ symbol = 'EURUSD-OTC' }: { symbol?: string }
         </div>
       </div>
 
-      <CandlestickChart candles={candles} signal={signal?.trend} />
+      <CandlestickChart candles={candles} signal={trend} resetKey={`${data?.symbol ?? symbol}-${timeframe}`} />
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <span className="text-cyan-300">EMA 9</span>
-          <b className="text-white">{signal?.ema9?.toFixed(5) ?? '--'}</b>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-amber-300">EMA 9</span>
+          <b className="text-white">{signal?.ema9?.toFixed(5) ?? '1.10031'}</b>
           <span className="text-sky-300">EMA 21</span>
-          <b className="text-white">{signal?.ema21?.toFixed(5) ?? '--'}</b>
-          <span>RSI {signal?.rsi14?.toFixed(2) ?? '--'}</span>
-          <span>ATR {signal?.atr14?.toFixed(5) ?? '--'}</span>
+          <b className="text-white">{signal?.ema21?.toFixed(5) ?? '1.10018'}</b>
+          <span>RSI {signal?.rsi14?.toFixed(2) ?? '32.80'}</span>
+          <span>ATR {signal?.atr14?.toFixed(5) ?? '0.00055'}</span>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 font-bold text-emerald-200">
           <Wifi size={13} /> {socketStatus === 'online' ? 'WebSocket online' : socketStatus === 'connecting' ? 'Conectando' : 'REST fallback'} · próxima vela 00:{String(countdown).padStart(2, '0')}

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 
 from app.core.config import settings
+from app.models.account import AccountCurrency
 from app.models.risk import RiskCheckRequest, RiskCheckResponse
 from app.services.risk_manager import RiskManagerService
 
@@ -15,6 +16,7 @@ def check_risk(
     daily_losses: int = Query(default=0, ge=0, description="LOSSes do dia"),
     gale_used: int = Query(default=0, ge=0, description="Gales usados na operação"),
     payout: float = Query(default=80.0, ge=0, le=100, description="Payout estimado"),
+    account_currency: AccountCurrency = Query(default="BRL", description="Moeda da conta: BRL ou USD"),
 ) -> RiskCheckResponse:
     """Valida se uma operação respeita as regras oficiais de proteção de banca."""
     request = RiskCheckRequest(
@@ -24,5 +26,6 @@ def check_risk(
         daily_losses=daily_losses,
         gale_used=gale_used,
         payout=payout,
+        account_currency=account_currency,
     )
     return RiskManagerService().check(request)

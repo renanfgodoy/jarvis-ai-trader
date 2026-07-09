@@ -1,5 +1,6 @@
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Bot, CircleDot, Download, Radio, TrendingUp } from 'lucide-react';
+import { Bell, Bot, CircleDot, Download, TrendingUp } from 'lucide-react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import TopAssets from '../components/TopAssets';
@@ -7,54 +8,103 @@ import AIStatus from '../components/AIStatus';
 import ChartCard from '../components/ChartCard';
 import RiskCard from '../components/RiskCard';
 import Timeline from '../components/Timeline';
-import { getCurrentProvider, getExecutionStatus, getHealth, getRiskCheck, getSignalAnalysis, getTopAssets } from '../services/api';
-import type { AssetScannerResult } from '../types/api';
+import TimeframeControl from '../components/TimeframeControl';
+import { checkAutoTradeGate, getCurrentProvider, getExecutionStatus, getHealth, getRiskCheck, getSignalAnalysis, getTopAssets } from '../services/api';
+import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
-  const health = useQuery({ queryKey: ['health'], queryFn: getHealth });
-  const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider });
-  const scanner = useQuery({ queryKey: ['scanner'], queryFn: getTopAssets, refetchInterval: 3000 });
-  const risk = useQuery({ queryKey: ['risk'], queryFn: getRiskCheck });
+  const [selectedSymbol, setSelectedSymbol] = useState('EURUSD-OTC');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe | null>(null);
+  const [autoTradeEnabled, setAutoTradeEnabled] = useState(false);
+  const [accountCurrency, setAccountCurrency] = useState<AccountCurrency>('BRL');
+  const entryValue = accountCurrency === 'BRL' ? 10 : 1;
+  const activeTimeframe = selectedTimeframe ?? 'M1';
+
+  const health = useQuery({ queryKey: ['health'], queryFn: getHealth, refetchInterval: 5000 });
+  const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider, refetchInterval: 5000 });
+  const scanner = useQuery({
+    queryKey: ['scanner', activeTimeframe, autoTradeEnabled],
+    queryFn: () => getTopAssets(activeTimeframe),
+    refetchInterval: 3000,
+    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+  });
+  const risk = useQuery({ queryKey: ['risk', accountCurrency, entryValue], queryFn: () => getRiskCheck(accountCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
 
-  const assets = scanner.data?.top_assets ?? scanner.data?.results ?? [];
-  const bestAsset = assets[0] ?? fallbackAsset;
-  const signal = useQuery({ queryKey: ['signal', bestAsset.symbol], queryFn: () => getSignalAnalysis(bestAsset.symbol), refetchInterval: 5000 });
+  const assets = useMemo(() => scanner.data?.top_assets ?? scanner.data?.results ?? [], [scanner.data]);
+  const selectedAsset = useMemo(() => {
+    return assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0] ?? fallbackAsset;
+  }, [assets, selectedSymbol]);
+  const activeSymbol = selectedAsset.symbol ?? selectedSymbol;
+  const signal = useQuery({
+    queryKey: ['signal', activeSymbol, activeTimeframe, autoTradeEnabled],
+    queryFn: () => getSignalAnalysis(activeSymbol, activeTimeframe),
+    refetchInterval: 5000,
+    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+  });
+
+  const gate = useQuery({
+    queryKey: ['autotrade-gate', activeSymbol, selectedTimeframe, accountCurrency, entryValue, autoTradeEnabled, selectedAsset.score, risk.data?.allowed, execution.data?.status],
+    queryFn: () => checkAutoTradeGate({
+      symbol: activeSymbol,
+      timeframe: selectedTimeframe,
+      account_type: 'DEMO',
+      currency: accountCurrency,
+      balance: 200,
+      entry_value: entryValue,
+      score: Math.round(selectedAsset.score ?? 0),
+      minimum_score: 80,
+      risk_approved: Boolean(risk.data?.allowed ?? true),
+      websocket_online: true,
+      execution_ready: (execution.data?.status ?? 'READY') === 'READY',
+      asset_valid: Boolean(activeSymbol),
+      autotrade_requested: autoTradeEnabled
+    }),
+    refetchInterval: 2500
+  });
 
   return (
     <div className="min-h-screen bg-[#05051f] text-slate-200">
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_32%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_34%),linear-gradient(180deg,#060626,#05051f)]" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_36%),linear-gradient(180deg,#060626,#05051f)]" />
       <div className="flex min-h-screen">
         <Sidebar />
         <main className="min-w-0 flex-1">
           <Header health={health.data} provider={provider.data} />
-          <section className="mx-auto max-w-[1500px] space-y-4 p-4 2xl:p-5">
-            <div className="grid gap-4 xl:grid-cols-[1.05fr_1fr_1.15fr]">
-              <AssetSelector assets={assets} />
-              <TradingManagement />
-              <OperationArea />
-            </div>
+          <section className="mx-auto max-w-[1920px] space-y-4 p-3 2xl:p-4">
+            <TimeframeControl
+              selected={selectedTimeframe}
+              onSelect={(tf) => {
+                setSelectedTimeframe(tf);
+                setAutoTradeEnabled(false);
+              }}
+              autoTradeEnabled={autoTradeEnabled}
+              onToggleAutoTrade={() => setAutoTradeEnabled((current) => !current)}
+              gateStatus={gate.data?.status}
+            />
 
-            <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <TopAssets assets={assets} />
-              <ChartCard symbol={bestAsset.symbol} />
+            <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+              <TopAssets assets={assets} selectedSymbol={activeSymbol} onSelect={setSelectedSymbol} />
+              <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+              <AIStatus signal={autoTradeEnabled ? signal.data : undefined} compact />
+              <RiskCard risk={risk.data} compact />
+              <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[0.8fr_0.8fr_1.4fr]">
+              <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={accountCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} />
               <StatsPanel />
-              <UsersPanel />
-              <RiskCard risk={risk.data} />
+              <Timeline />
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1fr_1.35fr]">
-              <AIStatus signal={signal.data} />
-              <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} />
+            <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+              <GatePanel reasons={gate.data?.reasons ?? []} warnings={gate.data?.warnings ?? []} />
+              <RecentOperations />
             </div>
 
-            <NewsPanel />
-            <RecentOperations />
             <InstallPanel />
-            <Timeline />
           </section>
         </main>
       </div>
@@ -62,109 +112,57 @@ export default function Dashboard() {
   );
 }
 
-function AssetSelector({ assets }: { assets: AssetScannerResult[] }) {
-  const top = (assets.length ? assets : [fallbackAsset, { ...fallbackAsset, symbol: 'RAYDIUMUSD-OTC', score: 76 }, { ...fallbackAsset, symbol: 'GOOGLE-OTC', score: 78 }]).slice(0, 3);
-  return (
-    <div className="panel p-4">
-      <p className="eyebrow">Selecionar Ativo</p>
-      <h3 className="mt-1 text-base font-black text-white">Top 3 · Criptomoedas</h3>
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        {top.map((asset, index) => (
-          <div key={asset.symbol} className={`rounded-2xl border p-3 text-center ${index === 0 ? 'border-cyan-400/70 bg-cyan-400/10 shadow-glow' : 'border-white/10 bg-white/[0.035]'}`}>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-xl font-black text-white">{asset.symbol[0]}</div>
-            <p className="mt-3 min-h-[34px] text-sm font-black text-white">{asset.symbol}</p>
-            <p className="text-[11px] text-slate-500">Digital · Aberto</p>
-            <p className="mt-2 text-xl font-black text-cyan-300">{Math.round(asset.score ?? 0)}%</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TradingManagement() {
+function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, entryValue, gateAllowed }: { selectedAsset: AssetScannerResult; timeframe: Timeframe | null; currency: AccountCurrency; setCurrency: (currency: AccountCurrency) => void; entryValue: number; gateAllowed: boolean }) {
   return (
     <div className="panel p-4">
       <p className="eyebrow">Gerenciamento de Trading</p>
-      <h3 className="mt-1 text-base font-black text-white">Ajuste os parâmetros da IA</h3>
-      <label className="mt-4 block text-xs uppercase tracking-widest text-slate-500">Valor</label>
-      <div className="mt-2 rounded-xl border border-white/10 bg-[#0b0b35] px-4 py-3 text-lg font-black text-white">R$ 10</div>
-      <p className="mt-4 text-xs uppercase tracking-widest text-slate-500">Gales</p>
-      <div className="mt-2 grid grid-cols-4 gap-2">
-        {[0, 1, 2, 3].map((item) => <button key={item} className={`rounded-xl border py-3 text-sm font-black ${item === 1 ? 'border-cyan-400 bg-cyan-400 text-slate-950' : 'border-white/10 bg-white/[0.035] text-slate-300'}`}>{item}</button>)}
+      <h3 className="mt-1 text-sm font-black text-white">{selectedAsset.symbol} · {timeframe ?? 'Selecione M1/M5/M15'}</h3>
+      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+        <Info label="Moeda" value={currency} color="cyan" />
+        <Info label="Entrada" value={`${currency === 'BRL' ? 'R$' : 'US$'}${entryValue}`} color="cyan" />
+        <Info label="Mínimo" value={currency === 'BRL' ? 'R$5' : 'US$1'} color="amber" />
+        <Info label="Gate" value={gateAllowed ? 'OK' : 'WAIT'} color={gateAllowed ? 'green' : 'amber'} />
       </div>
-      <p className="mt-4 text-xs text-slate-500">Mínimo: R$5,00 · Valor inicial e tentativas de recuperação.</p>
-    </div>
-  );
-}
-
-function OperationArea() {
-  return (
-    <div className="panel relative overflow-hidden p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="eyebrow">Área de Operação</p>
-          <span className="mt-2 inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-300">Sistema ativo</span>
-        </div>
-        <Bot className="text-cyan-300" />
+      <div className="mt-3 flex gap-2">
+        <button onClick={() => setCurrency('BRL')} className={`toolbar-btn ${currency === 'BRL' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta BRL</button>
+        <button onClick={() => setCurrency('USD')} className={`toolbar-btn ${currency === 'USD' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta USD</button>
       </div>
-      <div className="mt-5 flex h-[250px] items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(14,165,233,0.06))]">
-        <div className="relative flex h-44 w-44 items-center justify-center rounded-full bg-cyan-400/20 shadow-[0_0_80px_rgba(34,211,238,0.45)]">
-          <div className="absolute inset-[-22px] rounded-full border border-cyan-300/20" />
-          <div className="absolute inset-[-42px] rounded-full border border-blue-500/10" />
-          <button className="h-36 w-36 rounded-full bg-gradient-to-br from-cyan-300 to-blue-600 text-center text-xl font-black text-white shadow-[inset_0_0_40px_rgba(255,255,255,0.24)]">
-            GERAR SINAL
-            <span className="block text-xs font-semibold text-cyan-100">IA Autopilot</span>
-          </button>
-        </div>
-      </div>
+      <p className="mt-4 text-xs text-slate-500">Modo oficial: conta DEMO. AutoTrade só analisa após timeframe + ativação.</p>
     </div>
   );
 }
 
 function StatsPanel() {
   return (
-    <div className="panel grid grid-cols-2 gap-4 p-5 text-center">
+    <div className="panel grid grid-cols-2 gap-4 p-4 text-center">
       <div className="flex flex-col items-center justify-center">
-        <CircleDot className="text-cyan-300" size={36} />
-        <p className="mt-4 text-4xl font-black text-white">48%</p>
-        <p className="text-xs text-slate-500">Taxa de acerto</p>
-        <div className="mt-3 h-1 w-24 rounded-full bg-slate-800"><div className="h-1 w-1/2 rounded-full bg-cyan-400" /></div>
+        <CircleDot className="text-cyan-300" size={28} />
+        <p className="mt-3 text-3xl font-black text-white">48%</p>
+        <p className="text-xs text-slate-500">Taxa de acerto demo</p>
       </div>
       <div className="flex flex-col items-center justify-center">
-        <TrendingUp className="text-cyan-300" size={36} />
-        <p className="mt-4 text-4xl font-black text-white">75</p>
-        <p className="text-xs text-slate-500">Total de operações</p>
+        <TrendingUp className="text-cyan-300" size={28} />
+        <p className="mt-3 text-3xl font-black text-white">75</p>
+        <p className="text-xs text-slate-500">Operações simuladas</p>
       </div>
     </div>
   );
 }
 
-function UsersPanel() {
+function ExecutionPanel({ status, mode, executions, gateStatus }: { status: string; mode: string; executions: number; gateStatus: string }) {
   return (
-    <div className="panel p-5">
-      <p className="eyebrow">Usuários Ativos</p>
-      <div className="mt-5 flex items-center gap-2">
-        <div className="flex -space-x-2">
-          {['R', 'J', 'M', 'P', 'C'].map((avatar) => <span key={avatar} className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-950 bg-gradient-to-br from-cyan-400 to-violet-500 text-xs font-black text-white">{avatar}</span>)}
+    <div className="panel p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="eyebrow">Execution</p>
+          <h3 className="mt-1 text-base font-black text-white">Controle DEMO</h3>
         </div>
-        <span className="text-sm font-black text-emerald-300">+864 online agora</span>
+        <Bot className="text-cyan-300" size={20} />
       </div>
-      <p className="mt-4 text-2xl font-black text-cyan-300">+126 <span className="text-sm font-medium text-slate-400">usuários lucraram nas últimas 24 horas</span></p>
-      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-300">Priscila Freitas resgatou bônus de <b className="float-right text-amber-300">R$ 50,00</b></div>
-    </div>
-  );
-}
-
-function ExecutionPanel({ status, mode, executions }: { status: string; mode: string; executions: number }) {
-  return (
-    <div className="panel p-5">
-      <p className="eyebrow">Execution Engine</p>
-      <h3 className="mt-1 text-xl font-black text-white">Controle Operacional</h3>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <Info label="Status" value={status} color="cyan" />
         <Info label="Modo" value={mode} color="amber" />
-        <Info label="Execuções" value={executions} />
+        <Info label="Gate" value={gateStatus} />
         <Info label="Conta" value="DEMO" color="green" />
       </div>
     </div>
@@ -173,27 +171,28 @@ function ExecutionPanel({ status, mode, executions }: { status: string; mode: st
 
 function Info({ label, value, color = 'white' }: { label: string; value: string | number; color?: 'white' | 'cyan' | 'amber' | 'green' }) {
   const colors = { white: 'text-white', cyan: 'text-cyan-300', amber: 'text-amber-300', green: 'text-emerald-300' };
-  return <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-slate-500">{label}</p><p className={`mt-1 text-lg font-black ${colors[color]}`}>{value}</p></div>;
+  return <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3"><p className="text-[10px] uppercase tracking-widest text-slate-500">{label}</p><p className={`mt-1 text-base font-black ${colors[color]}`}>{value}</p></div>;
 }
 
-function NewsPanel() {
-  return <div className="panel flex items-center justify-between p-5"><div><p className="eyebrow">Notícias · Ao vivo</p><p className="mt-2 text-sm text-slate-300">Dados de inflação podem movimentar o mercado. · Calendário Econômico</p></div><Bell className="text-cyan-300" /></div>;
+function GatePanel({ reasons, warnings }: { reasons: string[]; warnings: string[] }) {
+  const messages = [...reasons, ...warnings].slice(0, 6);
+  return <div className="panel p-4"><p className="eyebrow">AutoTrade Gate</p><div className="mt-3 space-y-2 text-xs text-slate-300">{messages.length ? messages.map((item) => <p key={item}>• {item}</p>) : <p>Selecione M1/M5/M15 e ative AutoTrade para liberar análise.</p>}</div></div>;
 }
 
 function RecentOperations() {
   return (
-    <div className="panel p-5">
+    <div className="panel p-4">
       <div className="flex items-center justify-between"><p className="eyebrow">Operações Recentes</p><a className="text-sm font-black text-cyan-300">Ver todas →</a></div>
-      <div className="mt-4 flex gap-3 text-xs font-black"><span className="tag-green">✓ 135 Wins</span><span className="tag-red">× 46 Losses</span><span className="tag-blue">R$ 325,91</span></div>
-      <div className="mt-4 grid gap-3 md:grid-cols-4">
-        {['BTCUSD-OTC-op', 'ETHUSD-OTC', 'SOLUSD-OTC', 'BTCUSD-OTC'].map((item, index) => <div key={item} className="rounded-xl border border-white/10 bg-white/[0.035] p-3"><p className="font-black text-white">{item}</p><p className={index === 3 ? 'mt-3 text-emerald-300' : 'mt-3 text-red-300'}>{index === 3 ? 'Lucro +R$ 161,16' : 'Perda R$ 30,00'}</p></div>)}
+      <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-slate-400">
+        <span>Horário</span><span>Ativo</span><span>IA</span><span>Resultado</span>
+        <b className="text-slate-200">--:--</b><b className="text-slate-200">Aguardando</b><b className="text-cyan-300">DEMO</b><b className="text-amber-300">Pendente</b>
       </div>
     </div>
   );
 }
 
 function InstallPanel() {
-  return <div className="panel flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><Download className="text-cyan-300" /><div><p className="font-black text-white">Instale Nosso App</p><p className="text-sm text-slate-400">Tenha acesso rápido e notificações em tempo real</p></div></div><div className="grid w-full gap-3 md:w-auto md:grid-cols-2"><button className="rounded-xl border border-white/10 px-12 py-3 font-black text-white">Instalar no iOS</button><button className="rounded-xl border border-white/10 px-12 py-3 font-black text-emerald-300">Instalar no Android</button></div></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.14.2 · Timeframe Control + Currency Risk Gate.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
-const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'GBPUSD-OTC', signal: 'BUY', score: 96, risk_level: 'LOW', status: 'APPROVED' };
+const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };

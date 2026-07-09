@@ -1,3 +1,7 @@
+export type Timeframe = 'M1' | 'M5' | 'M15';
+export type AccountCurrency = 'BRL' | 'USD';
+export type AccountType = 'DEMO' | 'REAL';
+
 export type ProviderStatus = {
   provider?: string;
   active_provider?: string;
@@ -11,6 +15,7 @@ export type ProviderStatus = {
 export type AssetScannerResult = {
   rank: number;
   symbol: string;
+  timeframe?: string;
   signal?: string;
   score?: number;
   risk_level?: string;
@@ -108,6 +113,9 @@ export type RiskCheck = {
   recommended_entry?: number;
   max_entry_allowed?: number;
   official_rule?: string;
+  account_currency?: AccountCurrency;
+  currency_symbol?: string;
+  minimum_entry?: number;
 };
 
 export type ExecutionStatus = {
@@ -117,6 +125,44 @@ export type ExecutionStatus = {
   demo_only?: boolean;
   dry_run?: boolean;
   last_execution?: unknown;
+  supported_timeframes?: Timeframe[];
+  supported_currencies?: AccountCurrency[];
+};
+
+export type AutoTradeGateRequest = {
+  symbol: string;
+  timeframe: Timeframe | null;
+  account_type: AccountType;
+  currency: AccountCurrency;
+  balance: number;
+  entry_value?: number | null;
+  score: number;
+  minimum_score: number;
+  risk_approved: boolean;
+  websocket_online: boolean;
+  execution_ready: boolean;
+  asset_valid: boolean;
+  autotrade_requested: boolean;
+};
+
+export type AutoTradeGateResponse = {
+  allowed: boolean;
+  status: 'READY' | 'BLOCKED' | 'WAITING';
+  symbol: string;
+  timeframe: Timeframe | null;
+  account_type: AccountType;
+  currency: AccountCurrency;
+  currency_symbol: string;
+  balance: number;
+  entry_value: number;
+  minimum_entry: number;
+  score: number;
+  minimum_score: number;
+  can_analyze: boolean;
+  autotrade_enabled: boolean;
+  reasons: string[];
+  warnings: string[];
+  safety_rules: string[];
 };
 
 export type HealthResponse = {

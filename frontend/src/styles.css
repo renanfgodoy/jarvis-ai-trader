@@ -66,3 +66,49 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(34, 211, 238, 0.45) rgba(15, 23, 42, 0.8);
 }
+
+/* V0.13.3 — Trading Terminal layout adjustments */
+.trading-chart-panel {
+  min-height: 745px;
+}
+.scanner-table-panel {
+  min-height: 745px;
+}
+@media (min-width: 1280px) {
+  .trading-chart-panel .relative.h-\[590px\] {
+    height: 590px;
+  }
+}
+
+/* V0.14.0 — Chart Workspace Pro */
+.trading-chart-panel {
+  min-height: 835px;
+}
+.scanner-table-panel {
+  min-height: 835px;
+}
+@media (min-width: 1536px) {
+  .trading-chart-panel {
+    min-height: 860px;
+  }
+  .scanner-table-panel {
+    min-height: 860px;
+  }
+}
+
+
+/* V0.14.1 — Large chart workspace + stable zoom */
+.trading-chart-panel {
+  min-height: 880px;
+}
+.scanner-table-panel {
+  min-height: 880px;
+}
+@media (min-width: 1536px) {
+  .trading-chart-panel {
+    min-height: 900px;
+  }
+  .scanner-table-panel {
+    min-height: 900px;
+  }
+}

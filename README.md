@@ -329,3 +329,49 @@ Adiciona candles vivos em modo DEMO, countdown da vela, endpoints `/api/v1/live/
 - Layout reorganizado para dar mais espaço ao candlestick.
 - Candles, pavios, volume, EMA 9, EMA 21 e EMA 200 mais visíveis.
 - Painel lateral removido de dentro do gráfico para evitar compressão visual.
+
+
+## Sprint 13.3 — Dashboard Trading Terminal Refactor
+
+Refatoração do dashboard para aproximar a interface de uma mesa profissional de trading, com gráfico Candlestick maior, scanner compacto e melhor aproveitamento da tela.
+
+
+## V0.13.4 — Chart Engine Refactor
+
+- Substitui o gráfico SVG por TradingView Lightweight Charts.
+- Candlestick profissional com zoom, pan, crosshair, volume e EMAs.
+- Mantém a regra oficial: todo gráfico de preço é candlestick.
+
+
+## Sprint 14 — Chart Workspace Pro
+
+- Dashboard reorganizado para priorizar o gráfico Candlestick.
+- Scanner Top 12 sincronizado com o gráfico.
+- Painéis de IA, risco e execução compactados.
+- Gráfico de preço permanece sempre em Candlestick.
+
+
+## V0.14.2 — Timeframe Control + Currency Risk Gate
+
+Esta versão adiciona as regras oficiais de operação antes do AutoTrade:
+
+- O operador deve escolher o timeframe operacional: M1, M5 ou M15.
+- O robô só analisa e gera sinal após o operador ativar AutoTrade.
+- Conta REAL permanece bloqueada durante desenvolvimento; somente DEMO.
+- A moeda da conta precisa ser detectada/selecionada: BRL ou USD.
+- Entrada mínima por moeda:
+  - BRL: R$5,00
+  - USD: US$1,00
+- O AutoTrade Gate valida: DEMO, timeframe, moeda, entrada mínima, Risk Manager, score mínimo, ativo válido, WebSocket online e Execution Engine READY.
+
+Endpoint novo:
+
+```text
+POST /api/v1/execution/autotrade/gate
+```
+
+Commit sugerido:
+
+```bash
+git commit -m "feat(sprint-14): timeframe control and currency risk gate"
+```
