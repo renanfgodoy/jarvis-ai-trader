@@ -14,7 +14,7 @@ export default function MarketIntelligencePanel({ intelligence, enabled }: Props
           <Brain className="text-cyan-300" size={18} />
           <p className="eyebrow">Market Intelligence</p>
         </div>
-        <p className="mt-3 text-sm text-slate-400">Selecione M1/M5/M15 e ative AutoTrade para o J.A.R.V.I.S gerar score e explicação.</p>
+        <p className="mt-3 text-sm text-slate-400">Selecione M1/M5/M15 para o J.A.R.V.I.S analisar imediatamente. AutoTrade é somente para execução quando o gate aprovar.</p>
       </div>
     );
   }

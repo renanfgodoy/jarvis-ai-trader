@@ -25,10 +25,10 @@ export default function Dashboard() {
   const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider, refetchInterval: 5000 });
   const marketAssets = useQuery({ queryKey: ['market-assets'], queryFn: getMarketAssets, refetchInterval: 5000 });
   const scanner = useQuery({
-    queryKey: ['scanner', activeTimeframe, autoTradeEnabled],
+    queryKey: ['scanner', activeTimeframe],
     queryFn: () => getMarketIntelligenceTop(activeTimeframe),
     refetchInterval: 3000,
-    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+    enabled: Boolean(selectedTimeframe)
   });
   const risk = useQuery({ queryKey: ['risk', accountCurrency, entryValue], queryFn: () => getRiskCheck(accountCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
@@ -54,17 +54,17 @@ export default function Dashboard() {
   }, [assets, selectedSymbol]);
   const activeSymbol = selectedAsset.symbol ?? selectedSymbol;
   const signal = useQuery({
-    queryKey: ['signal', activeSymbol, activeTimeframe, autoTradeEnabled],
+    queryKey: ['signal', activeSymbol, activeTimeframe],
     queryFn: () => getSignalAnalysis(activeSymbol, activeTimeframe),
     refetchInterval: 5000,
-    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+    enabled: Boolean(selectedTimeframe)
   });
 
   const intelligence = useQuery({
-    queryKey: ['market-intelligence', activeSymbol, activeTimeframe, autoTradeEnabled],
+    queryKey: ['market-intelligence', activeSymbol, activeTimeframe],
     queryFn: () => getMarketIntelligence(activeSymbol, activeTimeframe),
     refetchInterval: 5000,
-    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+    enabled: Boolean(selectedTimeframe)
   });
 
   const gate = useQuery({
@@ -99,6 +99,7 @@ export default function Dashboard() {
               selected={selectedTimeframe}
               onSelect={(tf) => {
                 setSelectedTimeframe(tf);
+                // Safety rule: timeframe selection starts analysis immediately; changing TF pauses execution mode.
                 setAutoTradeEnabled(false);
               }}
               autoTradeEnabled={autoTradeEnabled}
@@ -118,7 +119,7 @@ export default function Dashboard() {
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_390px]">
               <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
               <div className="grid gap-4 content-start">
-                <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe && autoTradeEnabled)} />
+                <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
               </div>
@@ -158,7 +159,7 @@ function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, en
         <button onClick={() => setCurrency('BRL')} className={`toolbar-btn ${currency === 'BRL' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta BRL</button>
         <button onClick={() => setCurrency('USD')} className={`toolbar-btn ${currency === 'USD' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta USD</button>
       </div>
-      <p className="mt-4 text-xs text-slate-500">Modo oficial: conta DEMO. AutoTrade só analisa após timeframe + ativação.</p>
+      <p className="mt-4 text-xs text-slate-500">Modo oficial: conta DEMO. Timeframe analisa automaticamente; AutoTrade serve apenas para execução.</p>
     </div>
   );
 }
@@ -207,7 +208,7 @@ function Info({ label, value, color = 'white' }: { label: string; value: string 
 
 function GatePanel({ reasons, warnings }: { reasons: string[]; warnings: string[] }) {
   const messages = [...reasons, ...warnings].slice(0, 6);
-  return <div className="panel p-4"><p className="eyebrow">AutoTrade Gate</p><div className="mt-3 space-y-2 text-xs text-slate-300">{messages.length ? messages.map((item) => <p key={item}>• {item}</p>) : <p>Selecione M1/M5/M15 e ative AutoTrade para liberar análise.</p>}</div></div>;
+  return <div className="panel p-4"><p className="eyebrow">AutoTrade Gate</p><div className="mt-3 space-y-2 text-xs text-slate-300">{messages.length ? messages.map((item) => <p key={item}>• {item}</p>) : <p>Selecione M1/M5/M15 para analisar. AutoTrade fica separado e só libera execução quando o gate aprovar.</p>}</div></div>;
 }
 
 function RecentOperations() {
@@ -223,7 +224,7 @@ function RecentOperations() {
 }
 
 function InstallPanel() {
-  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.16.0 · Real Market Data Foundation.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.16.2 · Instant Timeframe Scanner.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
 const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };
