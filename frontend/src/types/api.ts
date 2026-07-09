@@ -74,6 +74,28 @@ export type LiveWorkspaceResponse = {
   signal: SignalAnalysis;
   top_assets: AssetScannerResult[];
   scanner_total: number;
+  countdown_seconds?: number;
+  last_price?: number;
+  events?: string[];
+  disclaimer?: string;
+};
+
+export type LiveTick = {
+  type: string;
+  mode: string;
+  symbol: string;
+  timeframe: string;
+  provider: string;
+  server_time: string;
+  price: number;
+  candle: Candle;
+  candles: Candle[];
+  countdown_seconds: number;
+  signal: SignalAnalysis;
+  top_assets: AssetScannerResult[];
+  scanner_total: number;
+  events: string[];
+  demo_only: boolean;
   disclaimer?: string;
 };
 

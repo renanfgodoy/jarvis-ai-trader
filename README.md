@@ -300,3 +300,32 @@ http://127.0.0.1:8000/docs
 - Dashboard premium inicial
 - Integração com API local
 - CORS liberado para desenvolvimento local
+
+
+## Sprint 12 — Live Trading Workspace
+
+Esta Sprint cria a primeira versão do workspace operacional do J.A.R.V.I.S AI TRADER.
+
+- Gráfico de preço sempre em Candlestick.
+- Endpoint `GET /api/v1/live/workspace`.
+- WebSocket DEMO `WS /api/v1/live/workspace/ws`.
+- Dashboard sincronizado com o melhor ativo do scanner.
+- Painel de indicadores técnicos ao lado do gráfico.
+- Nenhuma ordem real é enviada.
+
+### Regra oficial de gráficos
+
+Todo gráfico de preço da plataforma deve ser exibido em formato Candlestick/K-Line. Gráficos de linha, área ou barras ficam reservados para métricas estatísticas.
+
+
+## Sprint 13 — Live Market Engine
+
+Adiciona candles vivos em modo DEMO, countdown da vela, endpoints `/api/v1/live/candles`, `/api/v1/live/tick` e WebSocket `/api/v1/live/workspace/ws`.
+
+
+## Sprint 13.1 — Dashboard Refactor
+
+- Gráfico de preço ampliado e priorizado no workspace.
+- Layout reorganizado para dar mais espaço ao candlestick.
+- Candles, pavios, volume, EMA 9, EMA 21 e EMA 200 mais visíveis.
+- Painel lateral removido de dentro do gráfico para evitar compressão visual.

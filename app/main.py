@@ -39,6 +39,8 @@ def create_app() -> FastAPI:
             "signal_analyze": f"{settings.api_prefix}/signal/analyze",
             "quadcode_status": f"{settings.api_prefix}/quadcode/status",
             "dashboard_frontend": "http://127.0.0.1:5173",
+            "live_tick": f"{settings.api_prefix}/live/tick",
+            "live_websocket": "/api/v1/live/workspace/ws",
         }
 
     return app

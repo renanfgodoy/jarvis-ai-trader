@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import ai, execution, health, market, providers, quadcode, risk, scanner, signal, system
+from app.api.routes import ai, execution, health, live, market, providers, quadcode, risk, scanner, signal, system
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -14,3 +14,4 @@ api_router.include_router(quadcode.router)
 api_router.include_router(signal.router)
 api_router.include_router(scanner.router)
 api_router.include_router(execution.router)
+api_router.include_router(live.router)
