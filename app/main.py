@@ -23,6 +23,7 @@ def create_app() -> FastAPI:
             "market_snapshot": f"{settings.api_prefix}/market/snapshot",
             "ai_decision": f"{settings.api_prefix}/ai/decision",
             "risk_check": f"{settings.api_prefix}/risk/check",
+            "tradingview_webhook": f"{settings.api_prefix}/providers/tradingview/webhook",
         }
 
     return app
