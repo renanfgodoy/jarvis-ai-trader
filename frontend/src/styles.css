@@ -194,3 +194,40 @@ body {
     min-height: 760px;
   }
 }
+
+
+/* V0.17.0 — Professional Trading Workspace */
+.command-bar {
+  background: linear-gradient(120deg, rgba(8, 13, 47, 0.96), rgba(21, 25, 83, 0.92));
+}
+.command-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.035);
+  color: rgb(226,232,240);
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.chip-buy { color: rgb(110,231,183); border-color: rgba(16,185,129,.28); background: rgba(16,185,129,.1); }
+.chip-sell { color: rgb(252,165,165); border-color: rgba(248,113,113,.28); background: rgba(248,113,113,.1); }
+.chart-dominant {
+  min-height: 940px;
+}
+@media (min-width: 1536px) {
+  .chart-dominant { min-height: 975px; }
+}
+@media (max-width: 1279px) {
+  .chart-dominant { min-height: auto; }
+}
+.opportunity-card {
+  min-height: 174px;
+  padding: 14px;
+}
+.opportunity-card h4 {
+  font-size: 1rem;
+}

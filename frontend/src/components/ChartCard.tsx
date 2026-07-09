@@ -12,6 +12,11 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
   const [socketStatus, setSocketStatus] = useState<'connecting' | 'online' | 'fallback'>('connecting');
 
   useEffect(() => {
+    setStreamTick(null);
+    setSocketStatus('connecting');
+  }, [symbol, timeframe]);
+
+  useEffect(() => {
     let closed = false;
     const ws = new WebSocket(getLiveWorkspaceWebSocketUrl(symbol, timeframe));
     setSocketStatus('connecting');
@@ -34,7 +39,11 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
   }, [symbol, timeframe]);
 
   const data = useMemo(() => {
-    if (streamTick) {
+    const isSameContext = (payload?: { symbol?: string; timeframe?: string } | null) => {
+      return payload?.symbol === symbol && payload?.timeframe === timeframe;
+    };
+
+    if (streamTick && isSameContext(streamTick)) {
       return {
         mode: streamTick.mode,
         symbol: streamTick.symbol,
@@ -50,7 +59,8 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
         disclaimer: streamTick.disclaimer
       } as LiveWorkspaceResponse;
     }
-    if (tickFallback.data) {
+
+    if (tickFallback.data && isSameContext(tickFallback.data)) {
       const fallback = tickFallback.data;
       return {
         mode: fallback.mode,
@@ -67,8 +77,13 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
         disclaimer: fallback.disclaimer
       } as LiveWorkspaceResponse;
     }
-    return workspace.data;
-  }, [streamTick, tickFallback.data, workspace.data]);
+
+    if (workspace.data && isSameContext(workspace.data)) {
+      return workspace.data;
+    }
+
+    return undefined;
+  }, [streamTick, tickFallback.data, workspace.data, symbol, timeframe]);
 
   const signal = data?.signal;
   const candles = data?.candles ?? [];
@@ -79,7 +94,7 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
   const trend = signal?.trend ?? 'NEUTRAL';
 
   return (
-    <div className="panel p-3 trading-chart-panel">
+    <div className="panel p-3 trading-chart-panel chart-dominant">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge icon={<Clock3 size={13} />} text={timeframe} active />
@@ -98,7 +113,7 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
 
       <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h3 className="text-3xl font-black text-white">{data?.symbol ?? symbol}</h3>
+          <h3 className="text-2xl font-black text-white">{data?.symbol ?? symbol}</h3>
           <p className="mt-1 text-sm text-slate-400">
             {data?.timeframe ?? timeframe} · Score {Math.round(selectedAsset?.score ?? signal?.strength ?? 0)}% · Provider: {data?.provider ?? 'live-simulated'}
           </p>

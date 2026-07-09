@@ -94,7 +94,7 @@ export default function Dashboard() {
         <Sidebar />
         <main className="min-w-0 flex-1">
           <Header health={health.data} provider={provider.data} marketAssets={marketAssets.data} />
-          <section className="mx-auto max-w-[1920px] space-y-4 p-3 2xl:p-4">
+          <section className="mx-auto max-w-[1960px] space-y-3 p-3 2xl:p-4">
             <TimeframeControl
               selected={selectedTimeframe}
               onSelect={(tf) => {
@@ -116,23 +116,33 @@ export default function Dashboard() {
               openAssets={marketAssets.data?.open_assets ?? 0}
             />
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_390px]">
-              <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
-              <div className="grid gap-4 content-start">
+            <TradeCommandBar
+              selectedAsset={selectedAsset}
+              timeframe={selectedTimeframe}
+              countdown={gate.data?.status ?? 'WAITING'}
+              autoTradeEnabled={autoTradeEnabled}
+              gateAllowed={Boolean(gate.data?.allowed)}
+            />
+
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 space-y-3">
+                <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
+                <div className="grid gap-3 xl:grid-cols-[1.05fr_0.9fr_1.25fr]">
+                  <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={accountCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} />
+                  <StatsPanel />
+                  <CompactLog />
+                </div>
+              </div>
+              <aside className="space-y-3 xl:sticky xl:top-3 xl:self-start">
                 <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
-              </div>
+                <GatePanel reasons={gate.data?.reasons ?? []} warnings={gate.data?.warnings ?? []} />
+              </aside>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[0.85fr_0.75fr_1.4fr]">
-              <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={accountCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} />
-              <StatsPanel />
+            <div className="grid gap-3 xl:grid-cols-[1fr_1fr]">
               <Timeline />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-              <GatePanel reasons={gate.data?.reasons ?? []} warnings={gate.data?.warnings ?? []} />
               <RecentOperations />
             </div>
 
@@ -144,12 +154,55 @@ export default function Dashboard() {
   );
 }
 
+function TradeCommandBar({ selectedAsset, timeframe, countdown, autoTradeEnabled, gateAllowed }: { selectedAsset: AssetScannerResult; timeframe: Timeframe | null; countdown: string; autoTradeEnabled: boolean; gateAllowed: boolean }) {
+  const signal = selectedAsset.signal === 'SELL' || selectedAsset.signal === 'PUT' ? 'SELL' : selectedAsset.signal === 'BUY' || selectedAsset.signal === 'CALL' ? 'BUY' : 'WAIT';
+  return (
+    <div className="panel command-bar px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xl font-black text-white">{selectedAsset.symbol}</span>
+          <span className="command-chip">{timeframe ?? 'TF?'}</span>
+          <span className={`command-chip ${signal === 'BUY' ? 'chip-buy' : signal === 'SELL' ? 'chip-sell' : ''}`}>{signal}</span>
+          <span className="command-chip">Score {Math.round(selectedAsset.score ?? 0)}%</span>
+          <span className="command-chip">Payout {Math.round((selectedAsset as any).payout ?? 0)}%</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-widest">
+          <span className={gateAllowed ? 'text-emerald-300' : 'text-amber-300'}>Gate: {countdown}</span>
+          <span className={autoTradeEnabled ? 'text-emerald-300' : 'text-slate-400'}>AutoTrade {autoTradeEnabled ? 'ON' : 'OFF'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactLog() {
+  const lines = [
+    ['Agora', 'Scanner ativo'],
+    ['Agora', 'IA recalculando confluência'],
+    ['Agora', 'Risk Manager aguardando gate'],
+    ['Agora', 'Execution em DEMO']
+  ];
+  return (
+    <div className="panel p-3">
+      <p className="eyebrow">Log operacional</p>
+      <div className="mt-3 space-y-2 text-xs">
+        {lines.map(([time, text]) => (
+          <div key={text} className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.025] px-3 py-2">
+            <span className="text-cyan-300">{time}</span>
+            <b className="text-slate-200">{text}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, entryValue, gateAllowed }: { selectedAsset: AssetScannerResult; timeframe: Timeframe | null; currency: AccountCurrency; setCurrency: (currency: AccountCurrency) => void; entryValue: number; gateAllowed: boolean }) {
   return (
-    <div className="panel p-4">
-      <p className="eyebrow">Gerenciamento de Trading</p>
+    <div className="panel p-3">
+      <p className="eyebrow">Trading Panel</p>
       <h3 className="mt-1 text-sm font-black text-white">{selectedAsset.symbol} · {timeframe ?? 'Selecione M1/M5/M15'}</h3>
-      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
         <Info label="Moeda" value={currency} color="cyan" />
         <Info label="Entrada" value={`${currency === 'BRL' ? 'R$' : 'US$'}${entryValue}`} color="cyan" />
         <Info label="Mínimo" value={currency === 'BRL' ? 'R$5' : 'US$1'} color="amber" />
@@ -159,7 +212,7 @@ function TradingManagement({ selectedAsset, timeframe, currency, setCurrency, en
         <button onClick={() => setCurrency('BRL')} className={`toolbar-btn ${currency === 'BRL' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta BRL</button>
         <button onClick={() => setCurrency('USD')} className={`toolbar-btn ${currency === 'USD' ? 'border-cyan-400/40 text-cyan-200' : ''}`}>Conta USD</button>
       </div>
-      <p className="mt-4 text-xs text-slate-500">Modo oficial: conta DEMO. Timeframe analisa automaticamente; AutoTrade serve apenas para execução.</p>
+      <p className="mt-3 text-[11px] text-slate-500">DEMO obrigatório. Timeframe analisa automaticamente; AutoTrade só executa se o gate aprovar.</p>
     </div>
   );
 }
@@ -224,7 +277,7 @@ function RecentOperations() {
 }
 
 function InstallPanel() {
-  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.16.2 · Instant Timeframe Scanner.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.17.0 · Professional Trading Workspace.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
 const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };

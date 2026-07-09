@@ -35,21 +35,32 @@ function ema(values: number[], period: number) {
   return result;
 }
 
-function fallbackCandles(): Candle[] {
+function seedFromKey(key: string) {
+  return key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+}
+
+function fallbackCandles(resetKey: string): Candle[] {
   const now = Date.now();
-  let close = 1.2232;
+  const seed = seedFromKey(resetKey);
+  const keyParts = resetKey.split('-');
+  const fallbackTimeframe = keyParts[keyParts.length - 1] || 'M1';
+  const fallbackSymbol = keyParts.slice(0, -1).join('-') || 'EURUSD-OTC';
+  const basePrice = 1.12 + (seed % 900) / 10000;
+  let close = basePrice;
+  const amplitude = 0.0014 + (seed % 7) * 0.00022;
+  const driftDirection = seed % 2 === 0 ? 1 : -1;
   return Array.from({ length: 150 }).map((_, index) => {
-    const cycle = Math.sin(index / 5.3) * 0.0022 + Math.sin(index / 13) * 0.0032;
-    const micro = Math.sin(index * 1.71) * 0.0016;
-    const drift = index < 42 ? -0.00012 * index : index < 96 ? 0.00018 * (index - 42) - 0.005 : 0.00002 * index + 0.002;
+    const cycle = Math.sin((index + seed) / 5.3) * amplitude + Math.sin((index + seed) / 13) * (amplitude * 1.35);
+    const micro = Math.sin((index + seed) * 1.71) * (amplitude * 0.72);
+    const drift = driftDirection * (index < 42 ? -0.00008 * index : index < 96 ? 0.00012 * (index - 42) - 0.003 : 0.000015 * index + 0.0012);
     const open = close;
-    close = 1.2205 + cycle + micro + drift;
+    close = basePrice + cycle + micro + drift;
     const high = Math.max(open, close) + 0.0012 + Math.abs(Math.cos(index * 0.83)) * 0.0018;
     const low = Math.min(open, close) - 0.0012 - Math.abs(Math.sin(index * 0.77)) * 0.0016;
 
     return {
-      symbol: 'GBPUSD-OTC',
-      timeframe: 'M1',
+      symbol: fallbackSymbol,
+      timeframe: fallbackTimeframe,
       timestamp: new Date(now - (150 - index) * 60_000).toISOString(),
       open,
       high,
@@ -75,8 +86,8 @@ function toTimestamp(timestamp: string, index: number): UTCTimestamp {
   return (Math.floor(Date.now() / 1000) - (150 - index) * 60) as UTCTimestamp;
 }
 
-function normalizeCandles(source: Candle[]): ChartCandle[] {
-  const base = source.length && !isTooFlat(source) ? source : fallbackCandles();
+function normalizeCandles(source: Candle[], resetKey: string): ChartCandle[] {
+  const base = source.length && !isTooFlat(source) ? source : fallbackCandles(resetKey);
   const last150 = base.slice(-150);
   return last150.map((candle, index) => ({
     time: toTimestamp(candle.timestamp, index),
@@ -98,7 +109,7 @@ export default function CandlestickChart({ candles, signal = 'NEUTRAL', resetKey
   const ema200SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const initializedKeyRef = useRef<string | null>(null);
 
-  const data = useMemo(() => normalizeCandles(candles), [candles]);
+  const data = useMemo(() => normalizeCandles(candles, resetKey), [candles, resetKey]);
   const latest = data[data.length - 1];
   const first = data[0];
   const change = latest && first ? latest.close - first.open : 0;
@@ -223,7 +234,7 @@ export default function CandlestickChart({ candles, signal = 'NEUTRAL', resetKey
   }, [data, resetKey]);
 
   return (
-    <div className="relative h-[760px] overflow-hidden rounded-2xl border border-slate-700/60 bg-[#070920] shadow-[0_0_70px_rgba(34,211,238,0.10)]">
+    <div className="relative h-[820px] overflow-hidden rounded-2xl border border-slate-700/60 bg-[#070920] shadow-[0_0_70px_rgba(34,211,238,0.10)]">
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between bg-gradient-to-b from-[#070920]/92 via-[#070920]/62 to-transparent px-4 py-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
