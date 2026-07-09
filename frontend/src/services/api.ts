@@ -3,6 +3,8 @@ import type {
   AssetScannerResponse,
   ExecutionStatus,
   HealthResponse,
+  LiveWorkspaceResponse,
+  MarketCandlesResponse,
   ProviderStatus,
   RiskCheck,
   SignalAnalysis
@@ -27,9 +29,23 @@ export async function getTopAssets(): Promise<AssetScannerResponse> {
   return data;
 }
 
-export async function getSignalAnalysis(): Promise<SignalAnalysis> {
+export async function getSignalAnalysis(symbol = 'EURUSD-OTC'): Promise<SignalAnalysis> {
   const { data } = await api.get('/signal/analyze', {
-    params: { symbol: 'EURUSD-OTC', timeframe: 'M1', limit: 60 }
+    params: { symbol, timeframe: 'M1', limit: 60 }
+  });
+  return data;
+}
+
+export async function getMarketCandles(symbol = 'EURUSD-OTC'): Promise<MarketCandlesResponse> {
+  const { data } = await api.get('/market/candles', {
+    params: { symbol, timeframe: 'M1', limit: 80 }
+  });
+  return data;
+}
+
+export async function getLiveWorkspace(symbol = 'EURUSD-OTC'): Promise<LiveWorkspaceResponse> {
+  const { data } = await api.get('/live/workspace', {
+    params: { symbol, timeframe: 'M1', limit: 80 }
   });
   return data;
 }

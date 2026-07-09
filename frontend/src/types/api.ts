@@ -35,12 +35,46 @@ export type SignalAnalysis = {
   ema9?: number;
   ema21?: number;
   rsi?: number;
+  rsi14?: number;
   atr?: number;
+  atr14?: number;
   volatility?: string;
   strength?: number;
   momentum?: string;
   reasons?: string[];
   warnings?: string[];
+};
+
+export type Candle = {
+  symbol: string;
+  timeframe: string;
+  timestamp: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number | null;
+};
+
+export type MarketCandlesResponse = {
+  provider: string;
+  symbol: string;
+  timeframe: string;
+  count: number;
+  candles: Candle[];
+  disclaimer?: string;
+};
+
+export type LiveWorkspaceResponse = {
+  mode: string;
+  symbol: string;
+  timeframe: string;
+  provider: string;
+  candles: Candle[];
+  signal: SignalAnalysis;
+  top_assets: AssetScannerResult[];
+  scanner_total: number;
+  disclaimer?: string;
 };
 
 export type RiskCheck = {

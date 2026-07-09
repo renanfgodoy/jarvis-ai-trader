@@ -37,7 +37,7 @@ export default function Dashboard() {
 
             <div className="grid gap-6 xl:grid-cols-3">
               <TopAssets assets={assets} />
-              <ChartCard />
+              <ChartCard symbol={bestAsset?.symbol ?? 'EURUSD-OTC'} />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-3">
