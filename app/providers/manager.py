@@ -1,6 +1,7 @@
 from app.core.config import settings
 from app.models.candle import Candle, Timeframe
 from app.models.provider import ProviderCurrentResponse, ProviderManagerItem
+from app.models.market_asset import MarketAsset, MarketAssetsResponse
 from app.providers.base import MarketDataProvider
 from app.providers.quadcode import QuadcodePolariumProvider
 from app.providers.simulated import SimulatedMarketDataProvider
@@ -31,6 +32,30 @@ class ProviderManager:
 
     def get_symbols(self) -> list[str]:
         return self.get_active_provider().get_symbols()
+
+    def get_assets(self) -> list[MarketAsset]:
+        return self.get_active_provider().get_assets()
+
+    def get_assets_response(self) -> MarketAssetsResponse:
+        provider = self.get_active_provider()
+        assets = provider.get_assets()
+        data_quality = "SIMULATED" if provider.name == "simulated" else "UNAVAILABLE"
+        if assets:
+            data_quality = assets[0].data_quality
+        return MarketAssetsResponse(
+            provider=provider.name,
+            data_quality=data_quality,
+            total_assets=len(assets),
+            open_assets=sum(1 for asset in assets if asset.status == "OPEN"),
+            closed_assets=sum(1 for asset in assets if asset.status != "OPEN"),
+            simulated=data_quality == "SIMULATED",
+            assets=assets,
+            message=(
+                "Provider simulado ativo: estrutura pronta para receber dados reais."
+                if data_quality == "SIMULATED"
+                else "Provider real/externo ainda não conectado nesta versão."
+            ),
+        )
 
     def get_candles(self, symbol: str, timeframe: Timeframe = "M1", limit: int = 100) -> list[Candle]:
         return self.get_active_provider().get_candles(symbol=symbol, timeframe=timeframe, limit=limit)

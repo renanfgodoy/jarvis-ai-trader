@@ -1,4 +1,5 @@
 from app.models.candle import Candle, MarketSnapshot, Timeframe
+from app.models.market_asset import MarketAsset, MarketAssetsResponse
 from app.providers.base import MarketDataProvider
 from app.providers.manager import ProviderManager
 
@@ -18,6 +19,14 @@ class MarketReaderService:
     def get_symbols(self) -> list[str]:
         """Retorna os ativos disponíveis no provider ativo."""
         return self.provider.get_symbols()
+
+    def get_assets(self) -> list[MarketAsset]:
+        """Retorna ativos com payout/status/qualidade pelo Provider Manager."""
+        return self.provider_manager.get_assets()
+
+    def get_assets_response(self) -> MarketAssetsResponse:
+        """Retorna payload completo para o dashboard saber se os dados são reais ou simulados."""
+        return self.provider_manager.get_assets_response()
 
     def get_candles(self, symbol: str, timeframe: Timeframe = "M1", limit: int = 100) -> list[Candle]:
         """Retorna uma lista de candles normalizados."""

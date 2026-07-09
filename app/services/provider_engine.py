@@ -1,3 +1,4 @@
+from app.models.market_asset import MarketAssetsResponse
 from app.models.provider import (
     ProviderCurrentResponse,
     ProviderInfo,
@@ -59,6 +60,10 @@ class ProviderEngineService:
     def current_provider(self) -> ProviderCurrentResponse:
         """Retorna o provider ativo usado por Market Reader e Scanner."""
         return self.provider_manager.current()
+
+    def market_assets(self) -> MarketAssetsResponse:
+        """Retorna ativos do provider ativo com payout/status/qualidade."""
+        return self.provider_manager.get_assets_response()
 
     def list_provider_manager_items(self) -> list[ProviderManagerItem]:
         """Lista providers registrados no Provider Manager."""

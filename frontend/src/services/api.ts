@@ -8,6 +8,7 @@ import type {
   HealthResponse,
   LiveWorkspaceResponse,
   LiveTick,
+  MarketAssetsResponse,
   MarketCandlesResponse,
   MarketIntelligence,
   MarketIntelligenceScannerResponse,
@@ -56,6 +57,11 @@ export async function getSignalAnalysis(symbol = 'EURUSD-OTC', timeframe: Timefr
   const { data } = await api.get('/signal/analyze', {
     params: { symbol, timeframe, limit: 60 }
   });
+  return data;
+}
+
+export async function getMarketAssets(): Promise<MarketAssetsResponse> {
+  const { data } = await api.get('/market/assets');
   return data;
 }
 

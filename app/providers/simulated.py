@@ -2,7 +2,28 @@ from datetime import datetime, timedelta, timezone
 import random
 
 from app.models.candle import Candle, Timeframe
+from app.models.market_asset import MarketAsset
 from app.providers.base import MarketDataProvider
+
+
+SIMULATED_PAYOUTS: dict[str, float] = {
+    "EURUSD-OTC": 92.0,
+    "GBPUSD-OTC": 91.0,
+    "USDJPY-OTC": 88.0,
+    "USDCHF-OTC": 86.0,
+    "USDCAD-OTC": 84.0,
+    "AUDUSD-OTC": 90.0,
+    "NZDUSD-OTC": 87.0,
+    "EURJPY-OTC": 89.0,
+    "GBPJPY-OTC": 93.0,
+    "EURGBP-OTC": 85.0,
+    "BTCUSD-OTC": 82.0,
+    "ETHUSD-OTC": 83.0,
+    "SOLUSD-OTC": 81.0,
+    "XAUUSD-OTC": 80.0,
+    "EURCAD-OTC": 86.0,
+    "AUDJPY-OTC": 88.0,
+}
 
 DEFAULT_SIMULATED_SYMBOLS: tuple[str, ...] = (
     "EURUSD-OTC",
@@ -40,6 +61,25 @@ class SimulatedMarketDataProvider(MarketDataProvider):
     def get_symbols(self) -> list[str]:
         """Retorna ativos simulados usados pelo scanner Top 12."""
         return list(DEFAULT_SIMULATED_SYMBOLS)
+
+    def get_assets(self) -> list[MarketAsset]:
+        """Retorna ativos simulados com payout e status para o Scanner Pro."""
+        assets: list[MarketAsset] = []
+        for symbol in DEFAULT_SIMULATED_SYMBOLS:
+            assets.append(
+                MarketAsset(
+                    symbol=symbol,
+                    display_name=symbol.replace("-OTC", " OTC").replace("USD", "/USD") if "USD" in symbol else symbol.replace("-", " "),
+                    category=self._category_for(symbol),
+                    status="OPEN",
+                    payout=SIMULATED_PAYOUTS.get(symbol, 80.0),
+                    supported_timeframes=["M1", "M5", "M15"],
+                    data_quality="SIMULATED",
+                    provider=self.name,
+                    is_tradable=True,
+                )
+            )
+        return assets
 
     def get_candles(self, symbol: str, timeframe: Timeframe = "M1", limit: int = 100) -> list[Candle]:
         if limit <= 0:
@@ -88,6 +128,8 @@ class SimulatedMarketDataProvider(MarketDataProvider):
             "supportsRealtime": self.supports_realtime,
             "supportsTrading": self.supports_trading,
             "symbols": len(DEFAULT_SIMULATED_SYMBOLS),
+            "assets": len(DEFAULT_SIMULATED_SYMBOLS),
+            "dataQuality": "SIMULATED",
             "mode": "safe_development",
         }
 
@@ -115,3 +157,13 @@ class SimulatedMarketDataProvider(MarketDataProvider):
         if "XAU" in symbol:
             return 2300.0
         return 1.10000
+
+    @staticmethod
+    def _category_for(symbol: str) -> str:
+        if "BTC" in symbol or "ETH" in symbol or "SOL" in symbol:
+            return "crypto"
+        if "XAU" in symbol:
+            return "commodity"
+        if symbol.endswith("-OTC"):
+            return "otc"
+        return "forex"

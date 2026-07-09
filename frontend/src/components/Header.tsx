@@ -1,7 +1,7 @@
 import { Clock3, Cpu, Menu, Radio, ShieldCheck, Wifi } from 'lucide-react';
-import type { HealthResponse, ProviderStatus } from '../types/api';
+import type { HealthResponse, MarketAssetsResponse, ProviderStatus } from '../types/api';
 
-export default function Header({ health, provider }: { health?: HealthResponse; provider?: ProviderStatus }) {
+export default function Header({ health, provider, marketAssets }: { health?: HealthResponse; provider?: ProviderStatus; marketAssets?: MarketAssetsResponse }) {
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -20,6 +20,7 @@ export default function Header({ health, provider }: { health?: HealthResponse; 
           <StatusPill icon={Wifi} label="API" value={health?.status ?? 'offline'} ok={health?.status === 'online'} />
           <StatusPill icon={Cpu} label="IA" value="online" ok />
           <StatusPill icon={Radio} label="Provider" value={provider?.provider ?? provider?.active_provider ?? 'simulated'} ok />
+          <StatusPill icon={Radio} label="Dados" value={marketAssets?.data_quality ?? 'SIMULATED'} ok={marketAssets?.data_quality === 'REAL'} />
           <StatusPill icon={ShieldCheck} label="Execução" value="DEMO" ok />
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-2.5">
             <div className="flex items-center gap-2 text-slate-400"><Clock3 size={14} /><span className="text-[10px] uppercase tracking-widest">Hora local</span></div>

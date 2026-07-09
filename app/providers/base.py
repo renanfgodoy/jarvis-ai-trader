@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Literal
 
 from app.models.candle import Candle, Timeframe
+from app.models.market_asset import MarketAsset
 
 ProviderName = Literal["simulated", "tradingview", "quadcode"]
 ProviderStatus = Literal["active", "available", "disabled", "error", "not_implemented"]
@@ -25,6 +26,23 @@ class MarketDataProvider(ABC):
     def get_symbols(self) -> list[str]:
         """Retorna a lista de ativos disponíveis neste provider."""
         raise NotImplementedError
+
+    def get_assets(self) -> list[MarketAsset]:
+        """Retorna ativos disponíveis com payout, status e qualidade do dado.
+
+        Providers antigos podem usar a implementação padrão, que transforma
+        símbolos simples em ativos sem dados de payout real.
+        """
+        return [
+            MarketAsset(
+                symbol=symbol,
+                display_name=symbol.replace("-", " "),
+                provider=self.name,
+                data_quality="SIMULATED" if self.name == "simulated" else "UNAVAILABLE",
+                is_tradable=self.name == "simulated",
+            )
+            for symbol in self.get_symbols()
+        ]
 
     @abstractmethod
     def get_candles(self, symbol: str, timeframe: Timeframe = "M1", limit: int = 100) -> list[Candle]:

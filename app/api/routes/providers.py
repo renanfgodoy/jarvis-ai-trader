@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.models.market_asset import MarketAssetsResponse
 from app.models.provider import (
     ProviderCurrentResponse,
     ProviderInfo,
@@ -43,3 +44,14 @@ def list_provider_manager_items() -> list[ProviderManagerItem]:
     """Lista todos os providers registrados no Provider Manager."""
     service = ProviderEngineService()
     return service.list_provider_manager_items()
+
+
+@manager_router.get("/assets", response_model=MarketAssetsResponse)
+def provider_assets() -> MarketAssetsResponse:
+    """Lista ativos normalizados do provider ativo.
+
+    Usado pelo Dashboard para diferenciar dados SIMULATED x REAL e exibir
+    payout/status antes de liberar análise operacional.
+    """
+    service = ProviderEngineService()
+    return service.market_assets()

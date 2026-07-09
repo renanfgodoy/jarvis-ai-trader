@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     """Centraliza as configurações principais do projeto."""
 
     app_name: str = "J.A.R.V.I.S AI TRADER"
-    app_version: str = "0.14.2"
+    app_version: str = "0.16.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
 

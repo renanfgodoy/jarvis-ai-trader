@@ -5,9 +5,12 @@ type Props = {
   assets: AssetScannerResult[];
   selectedSymbol?: string;
   onSelect?: (symbol: string) => void;
+  dataQuality?: string;
+  totalAssets?: number;
+  openAssets?: number;
 };
 
-export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
+export default function TopAssets({ assets, selectedSymbol, onSelect, dataQuality = 'SIMULATED', totalAssets = 0, openAssets = 0 }: Props) {
   const visibleAssets = assets.length ? assets.slice(0, 12) : fallbackAssets;
 
   return (
@@ -16,13 +19,14 @@ export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
         <div>
           <p className="eyebrow">Scanner IA · Top 12</p>
           <h3 className="mt-1 text-sm font-black text-white">Mesa de Ativos</h3>
+          <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">{dataQuality} · {openAssets}/{totalAssets || visibleAssets.length} abertos</p>
         </div>
         <Trophy className="text-amber-300" size={17} />
       </div>
 
       <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
-        <div className="grid grid-cols-[28px_1fr_42px_50px_34px] bg-white/[0.035] px-3 py-2 text-[9px] uppercase tracking-widest text-slate-500">
-          <span>#</span><span>Ativo</span><span>Pay</span><span>Score</span><span>IA</span>
+        <div className="grid grid-cols-[28px_1fr_42px_50px_42px_34px] bg-white/[0.035] px-3 py-2 text-[9px] uppercase tracking-widest text-slate-500">
+          <span>#</span><span>Ativo</span><span>Pay</span><span>Score</span><span>Dado</span><span>IA</span>
         </div>
         <div className="divide-y divide-white/5">
           {visibleAssets.map((asset, index) => {
@@ -31,7 +35,7 @@ export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
               <button
                 key={`${asset.symbol}-${index}`}
                 onClick={() => onSelect?.(asset.symbol)}
-                className={`grid w-full grid-cols-[28px_1fr_42px_50px_34px] items-center px-3 py-[9px] text-left text-xs transition ${active ? 'bg-cyan-400/15 ring-1 ring-inset ring-cyan-400/40' : 'hover:bg-cyan-400/10'}`}
+                className={`grid w-full grid-cols-[28px_1fr_42px_50px_42px_34px] items-center px-3 py-[9px] text-left text-xs transition ${active ? 'bg-cyan-400/15 ring-1 ring-inset ring-cyan-400/40' : 'hover:bg-cyan-400/10'}`}
               >
                 <span className={`font-black ${active ? 'text-cyan-300' : 'text-slate-500'}`}>{asset.rank ?? index + 1}</span>
                 <div className="min-w-0">
@@ -40,6 +44,7 @@ export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
                 </div>
                 <span className="text-[11px] font-black text-sky-300">{Math.round((asset as any).payout ?? 80)}%</span>
                 <span className={`font-black ${scoreColor(asset.score ?? 0)}`}>{Math.round(asset.score ?? 0)}%</span>
+                <span className={`text-[9px] font-black ${(asset as any).data_quality === 'REAL' ? 'text-emerald-300' : 'text-amber-300'}`}>{(asset as any).data_quality ?? 'SIM'}</span>
                 <span className="flex justify-end"><SignalIcon signal={asset.signal} /></span>
               </button>
             );

@@ -35,11 +35,14 @@ class AssetScannerService:
         payout: float = 80.0,
     ) -> AssetScannerResponse:
         """Analisa múltiplos ativos e retorna o Top N ordenado por score."""
+        asset_map = {asset.symbol: asset for asset in self.market_reader.get_assets()}
         selected_symbols = self._normalize_symbols(symbols)
         results: list[AssetScanResult] = []
 
         for symbol in selected_symbols:
             analysis = self.signal_engine.analyze(symbol=symbol, timeframe=timeframe, limit=candle_limit)
+            asset = asset_map.get(symbol)
+            asset_payout = asset.payout if asset else payout
             risk = self.risk_manager.check(
                 RiskCheckRequest(
                     bankroll=bankroll or settings.bankroll_base,
@@ -47,7 +50,7 @@ class AssetScannerService:
                     daily_wins=0,
                     daily_losses=0,
                     gale_used=0,
-                    payout=payout,
+                    payout=asset_payout,
                 )
             )
 
@@ -60,6 +63,9 @@ class AssetScannerService:
                     symbol=symbol,
                     timeframe=timeframe,
                     signal=analysis.trend,
+                    payout=asset_payout,
+                    data_quality=asset.data_quality if asset else "SIMULATED",
+                    market_status=asset.status if asset else "OPEN",
                     score=score,
                     strength=analysis.strength,
                     risk_level=risk.risk_level,
@@ -86,6 +92,9 @@ class AssetScannerService:
             approved_count=sum(1 for item in ranked if item.status == "APPROVED"),
             watchlist_count=sum(1 for item in ranked if item.status == "WATCHLIST"),
             blocked_count=sum(1 for item in ranked if item.status == "BLOCKED"),
+            provider=self.market_reader.provider.name,
+            data_quality=ranked[0].data_quality if ranked else "SIMULATED",
+            simulated=ranked[0].data_quality == "SIMULATED" if ranked else True,
             results=ranked,
         )
 

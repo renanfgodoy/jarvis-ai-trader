@@ -387,3 +387,16 @@ Endpoints:
 - `GET /api/v1/intelligence/scanner/top`
 
 Regra: análise e sinal só devem ser gerados após timeframe selecionado e AutoTrade ativado em conta DEMO.
+
+
+## V0.16.0 — Real Market Data Foundation
+
+Esta versão adiciona a fundação para dados reais de mercado:
+
+- ativos normalizados com payout/status;
+- qualidade do dado (`SIMULATED`, `REAL`, `DELAYED`, `UNAVAILABLE`);
+- endpoints `/api/v1/market/assets` e `/api/v1/providers/assets`;
+- Scanner enriquecido com payout e origem dos dados;
+- Dashboard exibindo claramente quando os dados ainda são simulados.
+
+Regra: não executar ordem real nesta fase.

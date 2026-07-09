@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.core.config import settings
 from app.models.candle import MarketSnapshot, Timeframe
+from app.models.market_asset import MarketAssetsResponse
 from app.services.market_reader import MarketReaderService
 
 router = APIRouter(prefix="/market", tags=["Market Reader"])
@@ -35,3 +36,15 @@ def get_market_snapshot(
     """Retorna resumo do mercado com o último candle normalizado."""
     service = MarketReaderService()
     return service.get_snapshot(symbol=symbol, timeframe=timeframe, limit=limit)
+
+
+@router.get("/assets", response_model=MarketAssetsResponse)
+def get_market_assets() -> MarketAssetsResponse:
+    """Lista ativos disponíveis com payout, status e origem dos dados.
+
+    Esta rota é a fundação para substituir o scanner simulado por dados reais.
+    Quando o provider real estiver conectado, o dashboard continuará consumindo
+    a mesma rota, mas a qualidade do dado mudará de SIMULATED para REAL.
+    """
+    service = MarketReaderService()
+    return service.get_assets_response()

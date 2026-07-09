@@ -2,6 +2,34 @@ export type Timeframe = 'M1' | 'M5' | 'M15';
 export type AccountCurrency = 'BRL' | 'USD';
 export type AccountType = 'DEMO' | 'REAL';
 
+
+export type DataQuality = 'SIMULATED' | 'REAL' | 'DELAYED' | 'UNAVAILABLE';
+
+export type MarketAsset = {
+  symbol: string;
+  display_name: string;
+  category: string;
+  status: 'OPEN' | 'CLOSED' | 'SUSPENDED';
+  payout: number;
+  supported_timeframes: Timeframe[];
+  data_quality: DataQuality;
+  provider: string;
+  is_tradable: boolean;
+  updated_at: string;
+};
+
+export type MarketAssetsResponse = {
+  provider: string;
+  data_quality: DataQuality;
+  total_assets: number;
+  open_assets: number;
+  closed_assets: number;
+  simulated: boolean;
+  assets: MarketAsset[];
+  message: string;
+  disclaimer?: string;
+};
+
 export type ProviderStatus = {
   provider?: string;
   active_provider?: string;
@@ -24,6 +52,8 @@ export type AssetScannerResult = {
   volatility?: string;
   reasons?: string[];
   payout?: number;
+  data_quality?: DataQuality;
+  market_status?: string;
 };
 
 export type AssetScannerResponse = {
