@@ -5,11 +5,12 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import TopAssets from '../components/TopAssets';
 import AIStatus from '../components/AIStatus';
+import MarketIntelligencePanel from '../components/MarketIntelligencePanel';
 import ChartCard from '../components/ChartCard';
 import RiskCard from '../components/RiskCard';
 import Timeline from '../components/Timeline';
 import TimeframeControl from '../components/TimeframeControl';
-import { checkAutoTradeGate, getCurrentProvider, getExecutionStatus, getHealth, getRiskCheck, getSignalAnalysis, getTopAssets } from '../services/api';
+import { checkAutoTradeGate, getCurrentProvider, getExecutionStatus, getHealth, getMarketIntelligence, getMarketIntelligenceTop, getRiskCheck, getSignalAnalysis } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
@@ -24,14 +25,26 @@ export default function Dashboard() {
   const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider, refetchInterval: 5000 });
   const scanner = useQuery({
     queryKey: ['scanner', activeTimeframe, autoTradeEnabled],
-    queryFn: () => getTopAssets(activeTimeframe),
+    queryFn: () => getMarketIntelligenceTop(activeTimeframe),
     refetchInterval: 3000,
     enabled: Boolean(selectedTimeframe && autoTradeEnabled)
   });
   const risk = useQuery({ queryKey: ['risk', accountCurrency, entryValue], queryFn: () => getRiskCheck(accountCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
 
-  const assets = useMemo(() => scanner.data?.top_assets ?? scanner.data?.results ?? [], [scanner.data]);
+  const assets = useMemo(() => (scanner.data?.results ?? []).map((asset, index) => ({
+    rank: index + 1,
+    symbol: asset.symbol,
+    timeframe: asset.timeframe,
+    signal: asset.signal,
+    score: asset.score,
+    risk_level: asset.risk_bias,
+    status: asset.status,
+    trend: asset.trend,
+    volatility: asset.volatility,
+    reasons: asset.reasons,
+    payout: asset.payout
+  })), [scanner.data]);
   const selectedAsset = useMemo(() => {
     return assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0] ?? fallbackAsset;
   }, [assets, selectedSymbol]);
@@ -39,6 +52,13 @@ export default function Dashboard() {
   const signal = useQuery({
     queryKey: ['signal', activeSymbol, activeTimeframe, autoTradeEnabled],
     queryFn: () => getSignalAnalysis(activeSymbol, activeTimeframe),
+    refetchInterval: 5000,
+    enabled: Boolean(selectedTimeframe && autoTradeEnabled)
+  });
+
+  const intelligence = useQuery({
+    queryKey: ['market-intelligence', activeSymbol, activeTimeframe, autoTradeEnabled],
+    queryFn: () => getMarketIntelligence(activeSymbol, activeTimeframe),
     refetchInterval: 5000,
     enabled: Boolean(selectedTimeframe && autoTradeEnabled)
   });
@@ -88,7 +108,7 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
-              <AIStatus signal={autoTradeEnabled ? signal.data : undefined} compact />
+              <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe && autoTradeEnabled)} />
               <RiskCard risk={risk.data} compact />
               <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
             </div>
@@ -192,7 +212,7 @@ function RecentOperations() {
 }
 
 function InstallPanel() {
-  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.14.2 · Timeframe Control + Currency Risk Gate.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.15.0 · Market Intelligence Engine.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
 const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };

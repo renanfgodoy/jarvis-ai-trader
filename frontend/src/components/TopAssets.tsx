@@ -21,8 +21,8 @@ export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
       </div>
 
       <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
-        <div className="grid grid-cols-[28px_1fr_50px_34px] bg-white/[0.035] px-3 py-2 text-[9px] uppercase tracking-widest text-slate-500">
-          <span>#</span><span>Ativo</span><span>Score</span><span>IA</span>
+        <div className="grid grid-cols-[28px_1fr_42px_50px_34px] bg-white/[0.035] px-3 py-2 text-[9px] uppercase tracking-widest text-slate-500">
+          <span>#</span><span>Ativo</span><span>Pay</span><span>Score</span><span>IA</span>
         </div>
         <div className="divide-y divide-white/5">
           {visibleAssets.map((asset, index) => {
@@ -31,13 +31,14 @@ export default function TopAssets({ assets, selectedSymbol, onSelect }: Props) {
               <button
                 key={`${asset.symbol}-${index}`}
                 onClick={() => onSelect?.(asset.symbol)}
-                className={`grid w-full grid-cols-[28px_1fr_50px_34px] items-center px-3 py-[9px] text-left text-xs transition ${active ? 'bg-cyan-400/15 ring-1 ring-inset ring-cyan-400/40' : 'hover:bg-cyan-400/10'}`}
+                className={`grid w-full grid-cols-[28px_1fr_42px_50px_34px] items-center px-3 py-[9px] text-left text-xs transition ${active ? 'bg-cyan-400/15 ring-1 ring-inset ring-cyan-400/40' : 'hover:bg-cyan-400/10'}`}
               >
                 <span className={`font-black ${active ? 'text-cyan-300' : 'text-slate-500'}`}>{asset.rank ?? index + 1}</span>
                 <div className="min-w-0">
                   <p className="truncate font-black text-white">{asset.symbol}</p>
                   <p className="text-[9px] uppercase tracking-wider text-slate-500">{asset.risk_level ?? 'LOW'} · {asset.status ?? 'WATCHLIST'}</p>
                 </div>
+                <span className="text-[11px] font-black text-sky-300">{Math.round((asset as any).payout ?? 80)}%</span>
                 <span className={`font-black ${scoreColor(asset.score ?? 0)}`}>{Math.round(asset.score ?? 0)}%</span>
                 <span className="flex justify-end"><SignalIcon signal={asset.signal} /></span>
               </button>

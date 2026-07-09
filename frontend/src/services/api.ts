@@ -9,6 +9,8 @@ import type {
   LiveWorkspaceResponse,
   LiveTick,
   MarketCandlesResponse,
+  MarketIntelligence,
+  MarketIntelligenceScannerResponse,
   ProviderStatus,
   RiskCheck,
   SignalAnalysis,
@@ -31,6 +33,21 @@ export async function getHealth(): Promise<HealthResponse> {
 export async function getTopAssets(timeframe: Timeframe = 'M1'): Promise<AssetScannerResponse> {
   const { data } = await api.get('/scanner/top-assets', {
     params: { timeframe, candle_limit: 60, top: 12, bankroll: 200, payout: 80 }
+  });
+  return data;
+}
+
+
+export async function getMarketIntelligence(symbol = 'EURUSD-OTC', timeframe: Timeframe = 'M1'): Promise<MarketIntelligence> {
+  const { data } = await api.get('/intelligence/analyze', {
+    params: { symbol, timeframe, payout: 84, minimum_score: 80, minimum_payout: 75, candle_limit: 80 }
+  });
+  return data;
+}
+
+export async function getMarketIntelligenceTop(timeframe: Timeframe = 'M1'): Promise<MarketIntelligenceScannerResponse> {
+  const { data } = await api.get('/intelligence/scanner/top', {
+    params: { timeframe, top: 12, payout: 84, minimum_score: 80, minimum_payout: 75, candle_limit: 80 }
   });
   return data;
 }

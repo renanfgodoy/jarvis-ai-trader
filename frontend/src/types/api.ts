@@ -23,6 +23,7 @@ export type AssetScannerResult = {
   trend?: string;
   volatility?: string;
   reasons?: string[];
+  payout?: number;
 };
 
 export type AssetScannerResponse = {
@@ -163,6 +164,51 @@ export type AutoTradeGateResponse = {
   reasons: string[];
   warnings: string[];
   safety_rules: string[];
+};
+
+export type IntelligenceFactor = {
+  name: string;
+  points: number;
+  max_points: number;
+  passed: boolean;
+  explanation: string;
+};
+
+export type MarketIntelligence = {
+  symbol: string;
+  timeframe: Timeframe;
+  signal: string;
+  score: number;
+  status: string;
+  confidence_label: string;
+  payout: number;
+  minimum_score: number;
+  minimum_payout: number;
+  risk_bias: string;
+  trend: string;
+  momentum: string;
+  volatility: string;
+  ema9: number;
+  ema21: number;
+  rsi14: number;
+  atr14: number;
+  strength: number;
+  factors: IntelligenceFactor[];
+  reasons: string[];
+  warnings: string[];
+  action: string;
+};
+
+export type MarketIntelligenceScannerResponse = {
+  timeframe: Timeframe;
+  assets_scanned: number;
+  top_limit: number;
+  minimum_score: number;
+  minimum_payout: number;
+  approved_count: number;
+  watchlist_count: number;
+  blocked_count: number;
+  results: MarketIntelligence[];
 };
 
 export type HealthResponse = {

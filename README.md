@@ -375,3 +375,15 @@ Commit sugerido:
 ```bash
 git commit -m "feat(sprint-14): timeframe control and currency risk gate"
 ```
+
+
+## V0.15.0 — Market Intelligence Engine
+
+Adiciona Confluence Engine, Scanner Pro e explicação técnica da IA com score de 0 a 100.
+
+Endpoints:
+
+- `GET /api/v1/intelligence/analyze`
+- `GET /api/v1/intelligence/scanner/top`
+
+Regra: análise e sinal só devem ser gerados após timeframe selecionado e AutoTrade ativado em conta DEMO.
