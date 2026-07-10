@@ -1,4 +1,4 @@
-import type { MarketAssetsResponse, PolariumAccountState, PolariumOAuthSessionState } from '../types/api';
+import type { PolariumAccountState, PolariumOAuthSessionState } from '../types/api';
 import { sanitizeConnectionMessage } from './useConnectionHistory';
 import type { ConnectionWizardStep } from './useConnectionWizard';
 
@@ -7,12 +7,10 @@ export type ConnectionReadiness = 'ready' | 'blocked' | 'pending';
 export function usePolariumConnection({
   account,
   oauth,
-  market,
   steps
 }: {
   account?: PolariumAccountState;
   oauth?: PolariumOAuthSessionState;
-  market?: MarketAssetsResponse;
   steps: ConnectionWizardStep[];
 }) {
   const synced = Boolean(account?.is_balance_synced);
@@ -20,9 +18,7 @@ export function usePolariumConnection({
     account?.connected &&
     account?.status === 'CONNECTED' &&
     synced &&
-    account?.currency &&
-    market &&
-    market.data_quality !== 'UNAVAILABLE'
+    account?.currency
   );
 
   const readiness: ConnectionReadiness = ready ? 'ready' : account?.connected ? 'pending' : 'blocked';
@@ -47,7 +43,6 @@ export function usePolariumConnection({
     lastError: account?.last_sync_error ? sanitizeConnectionMessage(account.last_sync_error, 'Falha ao sincronizar conta.') : null,
     connectorStatus: account?.status ?? 'DISCONNECTED',
     websocketStatus: synced ? 'Sincronizado' : account?.connected ? 'Não verificado' : 'Bloqueado',
-    marketStatus: market ? `${market.data_quality} · ${market.open_assets}/${market.total_assets} abertos` : 'Não verificado',
     operationAvailable: ready ? 'Disponível para análise' : 'Bloqueada',
     readiness,
     blockedSteps,

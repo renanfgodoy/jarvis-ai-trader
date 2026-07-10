@@ -1,5 +1,5 @@
 import { ArrowRight, DatabaseZap, PlugZap, WalletCards } from 'lucide-react';
-import { useMarketData } from '../market-data/useMarketData';
+import { useRuntimeMarketContext } from '../hooks/useRuntimeMarketContext';
 import ActionButton from '../components/ActionButton';
 import Card from '../components/Card';
 import PageContainer from '../components/PageContainer';
@@ -7,7 +7,7 @@ import PageTitle from '../components/PageTitle';
 import StatusBadge from '../components/StatusBadge';
 
 export default function Dashboard() {
-  const marketData = useMarketData();
+  const marketData = useRuntimeMarketContext();
   const account = marketData.polarium.data;
 
   return (
@@ -29,7 +29,7 @@ export default function Dashboard() {
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Contexto selecionado</p>
             <h2 className="mt-2 text-2xl font-black text-white">{marketData.context.asset || 'Nenhum ativo selecionado'}</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Timeframe {marketData.context.timeframe} · Última atualização {marketData.status.lastUpdate} · Fonte {marketData.source.dataQuality}
+              Timeframe {marketData.context.timeframe} · Última sincronização {marketData.status.lastUpdate}
             </p>
           </div>
           <ActionButton

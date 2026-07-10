@@ -14,20 +14,19 @@ import { useConnectionHistory, sanitizeConnectionMessage } from '../../hooks/use
 import { useConnectionWizard } from '../../hooks/useConnectionWizard';
 import { usePolariumAccount } from '../../hooks/usePolariumAccount';
 import { usePolariumConnection } from '../../hooks/usePolariumConnection';
-import { getMarketAssets, getPolariumOAuthSession } from '../../services/api';
+import { getPolariumOAuthSession } from '../../services/api';
 
 export default function PolariumConnections() {
   const { polarium, login, logout, sync, loading } = usePolariumAccount();
   const oauth = useQuery({ queryKey: ['polarium-oauth-session'], queryFn: getPolariumOAuthSession, refetchInterval: 10000 });
-  const market = useQuery({ queryKey: ['market-assets'], queryFn: getMarketAssets, refetchInterval: 10000 });
   const { attempts, addAttempt, clearAttempts } = useConnectionHistory();
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const account = polarium.data;
-  const pageLoading = polarium.isLoading || oauth.isLoading || market.isLoading;
-  const actionLoading = loading || polarium.isFetching || oauth.isFetching || market.isFetching;
-  const steps = useConnectionWizard({ account, oauth: oauth.data, market: market.data, loading: actionLoading });
-  const connection = usePolariumConnection({ account, oauth: oauth.data, market: market.data, steps });
+  const pageLoading = polarium.isLoading || oauth.isLoading;
+  const actionLoading = loading || polarium.isFetching || oauth.isFetching;
+  const steps = useConnectionWizard({ account, oauth: oauth.data, loading: actionLoading });
+  const connection = usePolariumConnection({ account, oauth: oauth.data, steps });
 
   const summaryItems = useMemo<ConnectionSummaryItem[]>(() => [
     { label: 'Broker', value: connection.broker },
@@ -37,9 +36,8 @@ export default function PolariumConnections() {
     { label: 'Saldo', value: connection.balance, tone: connection.balance === 'Não sincronizado' ? 'warning' : 'success' },
     { label: 'Connector status', value: connection.connectorStatus, tone: account?.connected ? 'success' : 'warning' },
     { label: 'WebSocket status', value: connection.websocketStatus, tone: connection.websocketStatus === 'Sincronizado' ? 'success' : 'warning' },
-    { label: 'Market status', value: connection.marketStatus, tone: market.data ? 'success' : 'warning' },
     { label: 'Operação disponível', value: connection.operationAvailable, tone: connection.readiness === 'ready' ? 'success' : 'danger' }
-  ], [account?.connected, connection, market.data]);
+  ], [account?.connected, connection]);
 
   const runAction = async (action: string, step: string, callback: () => Promise<{ message?: string } | unknown>) => {
     if (actionLoading) return;
@@ -88,7 +86,7 @@ export default function PolariumConnections() {
           onConnect={(email, password, remember) => runAction('Conectar', 'OAuth', () => login.mutateAsync({ email, password, remember }))}
           onSync={() => runAction('Sincronizar', 'Conta', () => sync.mutateAsync())}
           onRefresh={() => runAction('Atualizar status', 'Status', async () => {
-            await Promise.all([polarium.refetch(), oauth.refetch(), market.refetch()]);
+            await Promise.all([polarium.refetch(), oauth.refetch()]);
             return { message: 'Status atualizado.' };
           })}
           onDisconnect={() => runAction('Desconectar', 'Sessão', () => logout.mutateAsync())}

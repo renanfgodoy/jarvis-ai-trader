@@ -1,4 +1,4 @@
-import type { MarketAssetsResponse, PolariumAccountState, PolariumOAuthSessionState } from '../types/api';
+import type { PolariumAccountState, PolariumOAuthSessionState } from '../types/api';
 
 export type ConnectionStepState = 'success' | 'running' | 'error' | 'pending' | 'blocked';
 
@@ -13,12 +13,10 @@ export type ConnectionWizardStep = {
 export function useConnectionWizard({
   account,
   oauth,
-  market,
   loading = false
 }: {
   account?: PolariumAccountState;
   oauth?: PolariumOAuthSessionState;
-  market?: MarketAssetsResponse;
   loading?: boolean;
 }): ConnectionWizardStep[] {
   const oauthOk = Boolean(oauth?.has_token || oauth?.status === 'TOKEN_STORED' || oauth?.status === 'CALLBACK_RECEIVED');
@@ -26,8 +24,7 @@ export function useConnectionWizard({
   const sessionOk = Boolean(account?.connected || account?.session_cached);
   const accountOk = Boolean(account?.connected && account?.email_masked);
   const currencyOk = Boolean(account?.is_balance_synced && account?.currency);
-  const marketOk = Boolean(account?.is_balance_synced && market && market.data_quality !== 'UNAVAILABLE');
-  const readyOk = Boolean(marketOk && account?.account_mode === 'DEMO' && account?.status === 'CONNECTED');
+  const readyOk = Boolean(currencyOk && account?.account_mode === 'DEMO' && account?.status === 'CONNECTED');
 
   return [
     {
@@ -66,16 +63,9 @@ export function useConnectionWizard({
       statusLabel: currencyOk ? 'Concluído' : accountOk ? 'Aguardando' : 'Bloqueado'
     },
     {
-      id: 'market-sync',
-      label: 'Market Sync',
-      description: marketOk ? 'Catálogo de mercado disponível.' : currencyOk ? 'Aguardando dados de mercado.' : 'Bloqueado pela conta.',
-      state: marketOk ? 'success' : currencyOk ? 'pending' : 'blocked',
-      statusLabel: marketOk ? 'Concluído' : currencyOk ? 'Aguardando' : 'Bloqueado'
-    },
-    {
       id: 'ready',
       label: 'READY',
-      description: readyOk ? 'Pronto para análise em modo seguro.' : 'Operação bloqueada visualmente até completar o fluxo.',
+      description: readyOk ? 'Sessão pronta para análise em modo seguro.' : 'Fluxo bloqueado até sessão e moeda estarem sincronizadas.',
       state: readyOk ? 'success' : 'blocked',
       statusLabel: readyOk ? 'Concluído' : 'Bloqueado'
     }

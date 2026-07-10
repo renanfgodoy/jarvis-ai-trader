@@ -20,11 +20,12 @@ import { useMarketDataContext } from '../market-data/MarketDataContext';
 
 export default function Markets() {
   const marketContext = useMarketDataContext();
-  const market = useMarketStatus(marketContext.timeframe);
-  const watchlist = useWatchlist(market.marketAssets.data?.assets ?? []);
+  const runtimeEnabled = Boolean(marketContext.asset);
+  const market = useMarketStatus(marketContext.timeframe, runtimeEnabled);
+  const watchlist = useWatchlist(runtimeEnabled ? market.marketAssets.data?.assets ?? [] : []);
   const overview = useMarketOverview({
     marketAssets: market.marketAssets.data,
-    scannerActive: Boolean(market.scanner.data),
+    scannerActive: runtimeEnabled && Boolean(market.scanner.data),
     selectedTimeframe: marketContext.timeframe,
     lastUpdated: market.lastUpdated
   });
@@ -88,14 +89,18 @@ export default function Markets() {
       </Card>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <MarketScannerWidget
-          scanner={market.scanner.data}
-          marketAssets={market.marketAssets.data}
-          selectedTimeframe={marketContext.timeframe}
-          selectedSymbol={marketContext.asset}
-          onSelectSymbol={marketContext.setAsset}
-          loading={market.scanner.isLoading}
-        />
+        {runtimeEnabled ? (
+          <MarketScannerWidget
+            scanner={market.scanner.data}
+            marketAssets={market.marketAssets.data}
+            selectedTimeframe={marketContext.timeframe}
+            selectedSymbol={marketContext.asset}
+            onSelectSymbol={marketContext.setAsset}
+            loading={market.scanner.isLoading}
+          />
+        ) : (
+          <EmptyState title="Selecione um ativo para carregar o scanner." message="O Friday Trade V2 não inicia scanner, feed ou WebSocket antes da seleção explícita." />
+        )}
         <WatchlistWidget items={watchlist.items} onSelect={(symbol) => {
           watchlist.setSelectedSymbol(symbol);
           marketContext.setAsset(symbol);

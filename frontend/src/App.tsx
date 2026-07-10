@@ -2,11 +2,8 @@ import MainLayout from './layouts/MainLayout';
 import { useAppNavigation } from './hooks/useAppNavigation';
 import Branding from './pages/Branding';
 import PolariumConnections from './pages/connections/PolariumConnections';
-import Diagnostics from './pages/Diagnostics';
 import Login from './pages/Login';
 import AIAnalysis from './pages/AIAnalysis';
-import MarketData from './pages/MarketData';
-import MarketIntelligence from './pages/MarketIntelligence';
 import Markets from './pages/Markets';
 import Operation from './pages/Operation';
 import PolariumLab from './pages/labs/PolariumLab';
@@ -41,11 +38,8 @@ export default function App() {
         {route === '/connections/polarium' && <PolariumConnections />}
         {route === '/dashboard' && <Operation />}
         {route === '/markets' && <Markets />}
-        {route === '/markets/data' && <MarketData />}
-        {route === '/markets/intelligence' && <MarketIntelligence />}
         {route === '/analysis' && <AIAnalysis />}
         {route === '/replay' && <Replay />}
-        {route === '/diagnostics' && <Diagnostics />}
         {(route === '/developer/brand-center' || route === '/branding') && <Branding />}
         {route === '/labs/polarium' && <PolariumLab />}
         {route === '/settings' && <Settings />}

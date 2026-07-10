@@ -1,18 +1,16 @@
 import { Clock3, Menu, Radio, ShieldCheck, UserCircle, Wifi } from 'lucide-react';
 import { brand } from '../../branding/brand';
-import type { HealthResponse, MarketAssetsResponse, PolariumAccountState, ProviderStatus } from '../../types/api';
+import type { HealthResponse, PolariumAccountState, ProviderStatus } from '../../types/api';
 import StatusBadge from '../StatusBadge';
 
 export default function Header({
   health,
   provider,
-  marketAssets,
   account,
   onMenuClick
 }: {
   health?: HealthResponse;
   provider?: ProviderStatus;
-  marketAssets?: MarketAssetsResponse;
   account?: PolariumAccountState;
   onMenuClick?: () => void;
 }) {
@@ -34,7 +32,6 @@ export default function Header({
         <div className="hidden flex-wrap items-center gap-3 xl:flex">
           <StatusPill icon={Wifi} label="API" value={health?.status ?? 'offline'} ok={health?.status === 'online'} />
           <StatusPill icon={Radio} label="Provider" value={provider?.provider ?? provider?.active_provider ?? 'Não disponível'} ok={Boolean(provider?.provider ?? provider?.active_provider)} />
-          <StatusPill icon={Radio} label="Dados" value={marketAssets?.data_quality ?? 'Não disponível'} ok={marketAssets?.data_quality === 'REAL'} />
           <StatusPill icon={ShieldCheck} label="Conta" value={account?.account_mode ?? 'N/D'} ok={connected} />
           <StatusPill icon={ShieldCheck} label="Moeda" value={account?.currency ?? 'N/D'} ok={Boolean(account?.currency)} />
           <StatusBadge status={connected ? 'CONECTADO' : 'OFFLINE'} tone={connected ? 'success' : 'warning'} />

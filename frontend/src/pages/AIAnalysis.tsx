@@ -2,10 +2,10 @@ import Card from '../components/Card';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
 import StatusBadge from '../components/StatusBadge';
-import { useMarketData } from '../market-data/useMarketData';
+import { useRuntimeMarketContext } from '../hooks/useRuntimeMarketContext';
 
 export default function AIAnalysis() {
-  const marketData = useMarketData();
+  const marketData = useRuntimeMarketContext();
   const hasAsset = Boolean(marketData.context.asset);
 
   return (

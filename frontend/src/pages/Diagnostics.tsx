@@ -1,4 +1,4 @@
-import { Activity, Server, Timer, Wifi } from 'lucide-react';
+import { Activity, Server, Wifi } from 'lucide-react';
 import Card from '../components/Card';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
@@ -7,7 +7,7 @@ import PolariumDiagnosticsPanel from '../components/PolariumDiagnosticsPanel';
 import { useSystemStatus } from '../hooks/useSystemStatus';
 
 export default function Diagnostics() {
-  const { health, provider, marketAssets } = useSystemStatus();
+  const { health, provider } = useSystemStatus();
 
   return (
     <PageContainer>
@@ -16,9 +16,8 @@ export default function Diagnostics() {
       </PageTitle>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <DiagnosticCard icon={Server} label="Backend" value={health.data?.status ?? 'offline'} />
-        <DiagnosticCard icon={Wifi} label="Connector" value={provider.data?.provider ?? provider.data?.active_provider ?? 'simulated'} />
+        <DiagnosticCard icon={Wifi} label="Connector" value={provider.data?.provider ?? provider.data?.active_provider ?? 'Não disponível'} />
         <DiagnosticCard icon={Activity} label="Frontend" value="online" />
-        <DiagnosticCard icon={Timer} label="Dados" value={marketAssets.data?.data_quality ?? 'SIMULATED'} />
       </div>
       <PolariumDiagnosticsPanel />
       <Card>

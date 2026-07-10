@@ -8,7 +8,7 @@ import { useSystemStatus } from '../hooks/useSystemStatus';
 
 export default function MainLayout({ activeRoute, onNavigate, children }: { activeRoute: AppRoute; onNavigate: (route: AppRoute) => void; children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { health, provider, marketAssets } = useSystemStatus();
+  const { health, provider } = useSystemStatus();
   const { polarium } = usePolariumAccount();
 
   return (
@@ -18,7 +18,7 @@ export default function MainLayout({ activeRoute, onNavigate, children }: { acti
         {mobileNavOpen && <button aria-label="Fechar navegação" className="fixed inset-0 z-20 bg-slate-950/70 lg:hidden" onClick={() => setMobileNavOpen(false)} />}
         <Sidebar activeRoute={activeRoute} onNavigate={onNavigate} mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <main className="min-w-0 flex-1">
-          <Header health={health.data} provider={provider.data} marketAssets={marketAssets.data} account={polarium.data} onMenuClick={() => setMobileNavOpen(true)} />
+          <Header health={health.data} provider={provider.data} account={polarium.data} onMenuClick={() => setMobileNavOpen(true)} />
           {children}
         </main>
       </div>
