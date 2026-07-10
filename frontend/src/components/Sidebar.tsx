@@ -2,7 +2,6 @@ import {
   BarChart3,
   Bot,
   Brain,
-  Gauge,
   History,
   LayoutDashboard,
   LifeBuoy,
@@ -13,6 +12,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { brand } from '../branding/brand';
+import BrandLogo from './BrandLogo';
 
 const items = [
   { label: 'Dashboard', icon: LayoutDashboard, active: true },
@@ -30,13 +30,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden h-screen w-[260px] shrink-0 border-r border-cyan-400/10 bg-[#07082a]/95 p-4 lg:flex lg:flex-col">
       <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-glow">
-          <Gauge size={26} />
-        </div>
-        <div>
-          <h1 className="text-lg font-black tracking-[0.24em] text-white">{brand.logo.wordmark}</h1>
-          <p className="text-xs font-bold text-cyan-300">{brand.logo.descriptor}</p>
-        </div>
+        <BrandLogo />
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4">

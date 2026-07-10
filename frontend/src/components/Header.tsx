@@ -13,7 +13,7 @@ export default function Header({ health, provider, marketAssets }: { health?: He
             <Menu size={20} />
           </button>
           <div>
-            <p className="text-[11px] uppercase tracking-[0.42em] text-cyan-300">{brand.subtitle}</p>
+            <p className="text-[11px] uppercase tracking-[0.42em] text-cyan-300">{brand.tagline}</p>
             <h2 className="mt-1 text-2xl font-black tracking-wide text-white md:text-3xl">{brand.name}</h2>
           </div>
         </div>

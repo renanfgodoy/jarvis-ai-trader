@@ -1,0 +1,16 @@
+<svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Friday Trade logo">
+  <rect x="10" y="10" width="76" height="76" rx="22" fill="#05070D"/>
+  <path d="M31 70V25H67" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M31 47H58" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M47 64L58 53L66 59L75 43" stroke="#22D3EE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M67 36V25" stroke="#22D3EE" stroke-width="5" stroke-linecap="round"/>
+  <path d="M114 34H151V43H126V51H148V60H126V75H114V34Z" fill="#FFFFFF"/>
+  <path d="M158 47H168V52C170 48 173 46 178 46V57C171 56 168 59 168 65V75H158V47Z" fill="#FFFFFF"/>
+  <path d="M183 47H193V75H183V47ZM182 36H194V44H182V36Z" fill="#FFFFFF"/>
+  <path d="M199 61C199 52 205 46 213 46C217 46 220 48 222 51V34H232V75H222V71C220 74 217 76 213 76C205 76 199 70 199 61ZM222 61C222 57 219 54 216 54C212 54 209 57 209 61C209 65 212 68 216 68C219 68 222 65 222 61Z" fill="#FFFFFF"/>
+  <path d="M237 61C237 52 244 46 253 46C262 46 268 52 268 61C268 70 262 76 253 76C244 76 237 70 237 61ZM258 61C258 57 256 54 253 54C249 54 247 57 247 61C247 65 249 68 253 68C256 68 258 65 258 61Z" fill="#FFFFFF"/>
+  <path d="M271 47H282L288 63L294 47H305L288 85H277L283 73L271 47Z" fill="#FFFFFF"/>
+  <path d="M114 21H211" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M114 86H306" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"/>
+  <text x="114" y="91" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="3">TRADE SMARTER.</text>
+</svg>

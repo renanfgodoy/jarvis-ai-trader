@@ -3,15 +3,19 @@ import { useEffect, useMemo, useState } from 'react';
 export type AppRoute =
   | '/login'
   | '/operation'
+  | '/markets'
+  | '/markets/intelligence'
   | '/connections/polarium'
   | '/diagnostics'
   | '/branding'
+  | '/developer/brand-center'
   | '/labs/polarium'
   | '/settings';
 
-const routes: AppRoute[] = ['/login', '/operation', '/connections/polarium', '/diagnostics', '/branding', '/labs/polarium', '/settings'];
+const routes: AppRoute[] = ['/login', '/operation', '/markets', '/markets/intelligence', '/connections/polarium', '/diagnostics', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
 
 function normalizePath(pathname: string): AppRoute {
+  if (pathname === '/branding') return '/developer/brand-center';
   return routes.includes(pathname as AppRoute) ? (pathname as AppRoute) : '/operation';
 }
 

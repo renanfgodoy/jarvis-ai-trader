@@ -1,0 +1,54 @@
+import EmptyState from '../../EmptyState';
+import Loading from '../../Loading';
+import TopAssets from '../../TopAssets';
+import type { AssetScannerResult, MarketAssetsResponse, MarketIntelligenceScannerResponse } from '../../../types/api';
+import type { MarketWorkspaceTimeframe } from '../../../hooks/useMarketStatus';
+
+export default function MarketScannerWidget({
+  scanner,
+  marketAssets,
+  selectedTimeframe,
+  selectedSymbol,
+  onSelectSymbol,
+  loading
+}: {
+  scanner?: MarketIntelligenceScannerResponse;
+  marketAssets?: MarketAssetsResponse;
+  selectedTimeframe: MarketWorkspaceTimeframe;
+  selectedSymbol?: string;
+  onSelectSymbol: (symbol: string) => void;
+  loading: boolean;
+}) {
+  if (selectedTimeframe === 'H1') {
+    return <EmptyState title="H1 preparado para integração futura" message="O contrato atual do scanner suporta M1, M5 e M15. H1 permanece apenas visual nesta Sprint." />;
+  }
+
+  if (loading && !scanner) return <Loading label="Carregando scanner de mercado" />;
+
+  const assets: AssetScannerResult[] = (scanner?.results ?? []).map((asset, index) => ({
+    rank: index + 1,
+    symbol: asset.symbol,
+    timeframe: asset.timeframe,
+    signal: asset.signal,
+    score: asset.score,
+    risk_level: asset.risk_bias,
+    status: asset.status,
+    trend: asset.trend,
+    volatility: asset.volatility,
+    reasons: asset.reasons,
+    payout: asset.payout,
+    data_quality: marketAssets?.data_quality ?? 'SIMULATED',
+    market_status: marketAssets?.assets.find((item) => item.symbol === asset.symbol)?.status ?? 'OPEN'
+  }));
+
+  return (
+    <TopAssets
+      assets={assets}
+      selectedSymbol={selectedSymbol}
+      onSelect={onSelectSymbol}
+      dataQuality={marketAssets?.data_quality ?? 'SIMULATED'}
+      totalAssets={marketAssets?.total_assets ?? 0}
+      openAssets={marketAssets?.open_assets ?? 0}
+    />
+  );
+}

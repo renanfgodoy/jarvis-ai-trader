@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bot, CircleDot, Download, TrendingUp } from 'lucide-react';
-import TopAssets from '../components/TopAssets';
-import MarketIntelligencePanel from '../components/MarketIntelligencePanel';
 import ChartCard from '../components/ChartCard';
 import RiskCard from '../components/RiskCard';
 import Timeline from '../components/Timeline';
@@ -10,11 +8,10 @@ import TimeframeControl from '../components/TimeframeControl';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
 import { brand } from '../branding/brand';
-import { checkAutoTradeGate, getExecutionStatus, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getPolariumStatus, getRiskCheck, getSignalAnalysis } from '../services/api';
+import { checkAutoTradeGate, getExecutionStatus, getPolariumStatus, getRiskCheck } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
-  const [selectedSymbol, setSelectedSymbol] = useState('EURUSD-OTC');
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe | null>(null);
   const [autoTradeEnabled, setAutoTradeEnabled] = useState(false);
   const [accountCurrency, setAccountCurrency] = useState<AccountCurrency>('BRL');
@@ -31,49 +28,10 @@ export default function Dashboard() {
     }
   }, [effectiveAccount?.currency, syncedAccount]);
 
-  const marketAssets = useQuery({ queryKey: ['market-assets'], queryFn: getMarketAssets, refetchInterval: 5000 });
-  const scanner = useQuery({
-    queryKey: ['scanner', activeTimeframe],
-    queryFn: () => getMarketIntelligenceTop(activeTimeframe),
-    refetchInterval: 3000,
-    enabled: Boolean(selectedTimeframe)
-  });
   const risk = useQuery({ queryKey: ['risk', resolvedCurrency, entryValue], queryFn: () => getRiskCheck(resolvedCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
-
-  const assetMeta = useMemo(() => new Map((marketAssets.data?.assets ?? []).map((asset) => [asset.symbol, asset])), [marketAssets.data]);
-  const assets = useMemo(() => (scanner.data?.results ?? []).map((asset, index) => ({
-    rank: index + 1,
-    symbol: asset.symbol,
-    timeframe: asset.timeframe,
-    signal: asset.signal,
-    score: asset.score,
-    risk_level: asset.risk_bias,
-    status: asset.status,
-    trend: asset.trend,
-    volatility: asset.volatility,
-    reasons: asset.reasons,
-    payout: asset.payout,
-    data_quality: assetMeta.get(asset.symbol)?.data_quality ?? marketAssets.data?.data_quality ?? 'SIMULATED',
-    market_status: assetMeta.get(asset.symbol)?.status ?? 'OPEN'
-  })), [scanner.data, assetMeta]);
-  const selectedAsset = useMemo(() => {
-    return assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0] ?? fallbackAsset;
-  }, [assets, selectedSymbol]);
-  const activeSymbol = selectedAsset.symbol ?? selectedSymbol;
-  const signal = useQuery({
-    queryKey: ['signal', activeSymbol, activeTimeframe],
-    queryFn: () => getSignalAnalysis(activeSymbol, activeTimeframe),
-    refetchInterval: 5000,
-    enabled: Boolean(selectedTimeframe)
-  });
-
-  const intelligence = useQuery({
-    queryKey: ['market-intelligence', activeSymbol, activeTimeframe],
-    queryFn: () => getMarketIntelligence(activeSymbol, activeTimeframe),
-    refetchInterval: 5000,
-    enabled: Boolean(selectedTimeframe)
-  });
+  const selectedAsset = useMemo(() => fallbackAsset, []);
+  const activeSymbol = selectedAsset.symbol;
 
   const hasGatePayload = Boolean(
     autoTradeEnabled &&
@@ -128,15 +86,6 @@ export default function Dashboard() {
               gateStatus={gateStatus}
             />
 
-            <TopAssets
-              assets={assets}
-              selectedSymbol={activeSymbol}
-              onSelect={setSelectedSymbol}
-              dataQuality={marketAssets.data?.data_quality ?? 'SIMULATED'}
-              totalAssets={marketAssets.data?.total_assets ?? 0}
-              openAssets={marketAssets.data?.open_assets ?? 0}
-            />
-
             <TradeCommandBar
               selectedAsset={selectedAsset}
               timeframe={selectedTimeframe}
@@ -155,7 +104,6 @@ export default function Dashboard() {
                 </div>
               </div>
               <aside className="space-y-3 xl:sticky xl:top-3 xl:self-start">
-                <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
                 <GatePanel reasons={gate.data?.reasons ?? []} warnings={gate.data?.warnings ?? []} />
@@ -296,7 +244,7 @@ function RecentOperations() {
 }
 
 function InstallPanel() {
-  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">{brand.name}</p><p className="mt-2 text-sm text-slate-400">v{brand.version} · {brand.subtitle}.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">{brand.name}</p><p className="mt-2 text-sm text-slate-400">v{brand.version} · {brand.tagline} · {brand.descriptor}.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
 const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };

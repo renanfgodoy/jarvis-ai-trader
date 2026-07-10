@@ -1,14 +1,16 @@
-import { BadgeCheck, FlaskConical, Home, PlugZap, Settings, Stethoscope } from 'lucide-react';
+import { BadgeCheck, BrainCircuit, FlaskConical, Home, LineChart, PlugZap, Settings, Stethoscope } from 'lucide-react';
 import { brand } from '../../branding/brand';
 import type { AppRoute } from '../../hooks/useAppNavigation';
 import BrandLogo from '../BrandLogo';
 
 const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementType; group?: string }> = [
   { route: '/operation', label: 'Operação', icon: Home },
+  { route: '/markets', label: 'Markets', icon: LineChart },
+  { route: '/markets/intelligence', label: 'Market Intel', icon: BrainCircuit },
   { route: '/connections/polarium', label: 'Conexões', icon: PlugZap },
   { route: '/diagnostics', label: 'Diagnósticos', icon: Stethoscope },
   { route: '/settings', label: 'Configurações', icon: Settings },
-  { route: '/branding', label: 'Branding', icon: BadgeCheck, group: 'Desenvolvimento' },
+  { route: '/developer/brand-center', label: 'Brand Center', icon: BadgeCheck, group: 'Desenvolvimento' },
   { route: '/labs/polarium', label: 'Polarium Lab', icon: FlaskConical, group: 'Desenvolvimento' }
 ];
 
