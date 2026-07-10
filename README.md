@@ -38,6 +38,9 @@ cd frontend
 npm install
 ```
 
+Dependências geradas não são versionadas. Se `frontend/node_modules/` não
+existir, reconstrua com `npm install` ou `npm ci` dentro de `frontend/`.
+
 ## Executar
 
 Backend:
@@ -75,3 +78,9 @@ npm run build
 - Nunca commitar `.env`, tokens, senhas, cookies, SSID ou arquivos HAR.
 - Use somente credenciais próprias e integrações autorizadas.
 - AutoTrade deve permanecer bloqueado enquanto conta DEMO, saldo, moeda, risco e sessão não estiverem validados.
+
+## Higiene do repositório
+
+- `frontend/node_modules/`, `frontend/dist/`, caches do Vite/Pytest/Python e artefatos de build não pertencem ao Git.
+- Arquivos locais como `.DS_Store`, `__pycache__/`, `.pyc`, `.log`, `.env` e `.jarvis_cache/` devem permanecer ignorados.
+- Arquivos HAR e qualquer conteúdo com tokens, cookies, bearer, authorization, refresh token, SSID ou credenciais nunca devem ser versionados.
