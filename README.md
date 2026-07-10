@@ -20,6 +20,13 @@ docs/        Histórico técnico das Sprints
 tools/       Ferramentas auxiliares de diagnóstico
 ```
 
+## Documentacao tecnica
+
+- Arquitetura oficial: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- ADRs: [docs/adr/](docs/adr/)
+- Roadmap: [ROADMAP.md](ROADMAP.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+
 ## Preparação
 
 Crie o ambiente local sem copiar segredos para o Git:
