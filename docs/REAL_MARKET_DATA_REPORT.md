@@ -486,4 +486,29 @@ Foram observadas mensagens `subscribeMessage` e `unsubscribeMessage`, mas a Spri
 ### Próximo passo recomendado
 
 Executar uma captura dirigida abrindo um único ativo e um único timeframe por vez, registrando o contexto visual manualmente junto da evidência sanitizada.
+## Sprint V2.9 — Correlação dirigida de candles
+
+Documento principal: `docs/ws/POLARIUM_DIRECTED_CORRELATION.md`.
+
+### Confirmações
+
+- `get-first-candles` e `first-candles` foram correlacionados por `request_id`.
+- `first-candles` retorna `candles_by_size` com OHLCV sanitizado.
+- `candle-generated` contém `active_id`, `size`, `from`, `to`, `open`, `close`, `min`, `max` e `volume`.
+
+### Correlações parciais
+
+- `size=60`, `size=300` e `size=900` foram observados, mas ainda não podem ser rotulados como M1, M5 e M15 sem evidência visual simultânea.
+- `active_id=76` aparece nos candles, mas a relação com EUR/USD OTC não foi comprovada por esta captura sanitizada.
+- `subscribeMessage` aparece no HAR, mas ainda não há contrato definitivo de subscription de candles.
+
+### Não confirmado
+
+- Active ID de EUR/USD OTC.
+- Active ID de GBP/USD OTC.
+- Subscription exata que gera cada fluxo de candle.
+
+### Próximo passo recomendado
+
+A próxima Sprint deve capturar uma sessão dirigida com registro visual/manual de ativo e timeframe no momento da coleta, para fechar a correlação antes de criar o Candle Parser.
 
