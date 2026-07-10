@@ -295,3 +295,195 @@ Podemos afirmar:
 Bloqueio atual:
 
 - Falta captura autorizada de frames reais contendo candle OHLC completo e sua sequencia de subscription.
+
+## Sprint V2.7 - Authorized WS Candle Capture
+
+### Escopo executado
+
+A Sprint V2.7 foi executada como investigacao local dentro do repositorio. Nao havia uma sessao Polarium autorizada ativa nem capturas sanitizadas em `docs/ws/` no momento da execucao.
+
+Por seguranca, nao foram lidos `.env`, cookies, tokens, headers privados, HAR bruto, credenciais, SSID ou conteudo de `.jarvis_cache`.
+
+### Frames observados
+
+Nenhum frame real novo foi capturado nesta execucao.
+
+Arquivos e evidencias locais verificados:
+
+- `app/connector/polarium/websocket/recorder.py`
+- `app/connector/polarium/diagnostics/service.py`
+- `tests/test_polarium_ws_recorder.py`
+- `tests/test_polarium_live_balance_parser.py`
+- `frontend/src/components/PolariumWsRecorderPanel.tsx`
+- `docs/V0_24_0_POLARIUM_WS_SESSION_RECORDER.md`
+- `docs/V0_22_0_POLARIUM_CONNECTION_DIAGNOSTIC_LAB.md`
+
+### Eventos observados
+
+| Evento | Classificacao | Evidencia |
+| --- | --- | --- |
+| `marginal-balance` | CONFIRMADO | Existe payload de teste com campos reais esperados e parser validado em `tests/test_polarium_live_balance_parser.py`. |
+| `subscription-balance-changed` | CONFIRMADO | Existe teste que classifica o evento como parcial/cache-only. |
+| `candle-generated` | PARCIAL | O WS Recorder detecta o evento e ha payload sintetico de laboratorio em testes; nao ha captura real autorizada persistida. |
+| `digital-option-client-price-generated` | PARCIAL | O WS Recorder detecta o evento e ha payload sintetico de laboratorio em testes; nao ha contrato real final. |
+| `timeSync` | PARCIAL | O diagnostico pode enviar probe `{"name": "timeSync"}`; nao ha evidencia de heartbeat oficial completo. |
+
+### Eventos descartados
+
+Nenhum evento real foi descartado nesta Sprint porque nao houve captura autorizada nova.
+
+Eventos simulados ou de teste nao foram tratados como contrato real:
+
+- `candle-generated` com `open`/`close` usado por `tests/test_polarium_ws_recorder.py`.
+- `digital-option-client-price-generated` com `price` usado por `tests/test_polarium_ws_recorder.py`.
+- Payloads de exemplo do painel `PolariumDiagnosticsPanel`.
+
+### Campos encontrados
+
+Campos confirmados para saldo:
+
+- `request_id`
+- `name`
+- `status`
+- `msg.id`
+- `msg.user_id`
+- `msg.available`
+- `msg.cash`
+- `msg.equity`
+- `msg.equity_usd`
+- `msg.currency`
+- `msg.type`
+
+Campos parcialmente detectaveis para candle/preco em laboratorio:
+
+- `name`
+- `request_id`
+- `status`
+- `microserviceName`
+- `msg`
+- `msg.active_id`
+- `msg.body.active_id`
+- `msg.open`
+- `msg.close`
+- `msg.price`
+
+Esses campos de candle/preco ainda nao estao confirmados por captura autorizada real.
+
+### Campos ausentes para candle real
+
+Ainda nao encontrados em captura real autorizada:
+
+- `symbol`
+- `active_id` com mapeamento para simbolo
+- `timeframe`
+- `timestamp`
+- `open`
+- `high`
+- `low`
+- `close`
+- `volume`
+- flag de candle confirmado/fechado
+- sequencia de subscription para candle
+- snapshot inicial
+- historico OHLC
+- heartbeat oficial
+- politica real de reconnect
+
+### Estrutura real do payload de candle
+
+Nao confirmada.
+
+Nao ha payload real de candle sanitizado no repositorio. Portanto, a Sprint V2.7 nao atualizou o contrato `MarketDataCandle` com novos campos, para evitar inferencia indevida.
+
+### Atualizacao do MarketDataAdapter
+
+Nao houve alteracao no `app/market/adapters/market_data_adapter.py`.
+
+Motivo: a Sprint exigia atualizar o contrato apenas se houvesse payload real confirmado. Como nao ha payload real de candle nesta execucao, o contrato passivo permanece com os campos minimos ja definidos:
+
+- `symbol`
+- `timeframe`
+- `open`
+- `high`
+- `low`
+- `close`
+- `timestamp`
+- `source`
+- `confirmed`
+
+### Hipoteses
+
+Hipoteses continuam pendentes:
+
+- A sessao autorizada envia subscribe de candles apos abrir grafico/ativo/timeframe.
+- `candle-generated` pode carregar OHLC completo em frames reais.
+- `active_id` pode ser mapeado para simbolo por mensagem separada.
+- O timeframe pode vir no payload de subscribe, no payload de candle ou precisar ser associado pelo contexto da assinatura.
+
+### Proximos passos especificos
+
+1. Subir backend e frontend localmente.
+2. Abrir a Central de Conexoes e confirmar status OAuth/sessao.
+3. Abrir Polarium manualmente com sessao autorizada do operador.
+4. Usar o WS Recorder snippet existente.
+5. Recarregar a pagina da Polarium.
+6. Abrir grafico, selecionar ativo e timeframe manualmente.
+7. Exportar frames do recorder.
+8. Remover qualquer token, cookie, header privado, SSID, bearer ou credencial antes de salvar.
+9. Salvar apenas captura sanitizada em `docs/ws/` se houver autorizacao.
+10. Rodar `POST /api/v1/polarium/ws-recorder/analyze`.
+11. Atualizar este relatorio com payload real confirmado.
+12. Atualizar `MarketDataAdapter` somente se o payload real de candle comprovar novos campos.
+## Sprint V2.8 — Evidência HAR autorizada
+
+Arquivo privado analisado: `.jarvis_cache/evidence/trade.polariumbroker.com.har`. A evidência rastreável foi limitada ao documento sanitizado `docs/ws/POLARIUM_HAR_CANDLE_EVIDENCE_SANITIZED.md`.
+
+### Eventos confirmados
+
+- `first-candles`: payload real observado com `candles_by_size`.
+- `candle-generated`: evento real observado em WebSocket autorizado.
+- `candles-generated`: evento real observado em WebSocket autorizado.
+- `digital-option-client-price-generated`: evento real observado em WebSocket autorizado.
+- `timeSync`: evento real observado em WebSocket autorizado.
+- `subscribeMessage` e `unsubscribeMessage`: eventos reais observados, ainda sem vínculo definitivo com candle/timeframe.
+
+### Eventos parciais
+
+- `subscribeMessage`: existe no HAR, mas a relação exata com cada candle/timeframe ainda precisa ser validada com uma captura dirigida.
+- Mapeamento `active_id` para símbolo visual: existem IDs, mas o símbolo exibido não fica comprovado apenas por esta evidência.
+- Mapeamento de timeframe: existem tamanhos/durações, incluindo `60`, `300` e `900`, mas a tradução para M1/M5/M15 requer correlação visual.
+
+### Eventos não confirmados
+
+- Não foi confirmado um campo explícito `high`; o payload usa `max` como candidato.
+- Não foi confirmado um campo explícito `low`; o payload usa `min` como candidato.
+- Não foi confirmado contrato definitivo de subscription de candles.
+
+### Estrutura do candle
+
+A estrutura confirmada em `first-candles` contém `candles_by_size`, com cada candle trazendo `from`, `to`, `open`, `close`, `min`, `max` e `volume`.
+
+Mapeamento técnico atual:
+
+- `open` → abertura confirmada.
+- `close` → fechamento confirmado.
+- `max` → candidato parcial para máxima.
+- `min` → candidato parcial para mínima.
+- `from` e `to` → janela temporal confirmada.
+- `volume` → presente em payload real.
+
+### Possível subscription
+
+Foram observadas mensagens `subscribeMessage` e `unsubscribeMessage`, mas a Sprint não transforma isso em contrato definitivo de candles.
+
+### Limitações
+
+- A evidência vem de uma única captura autorizada.
+- Não houve alteração de runtime, APIs, Connector ou Providers.
+- Não foi criado parser definitivo.
+- O contrato passivo só deve evoluir depois de uma captura dirigida que relacione ativo visual, timeframe visual, request e evento de retorno.
+
+### Próximo passo recomendado
+
+Executar uma captura dirigida abrindo um único ativo e um único timeframe por vez, registrando o contexto visual manualmente junto da evidência sanitizada.
+
