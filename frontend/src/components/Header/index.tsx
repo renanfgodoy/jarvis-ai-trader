@@ -1,4 +1,4 @@
-import { Clock3, Cpu, Menu, Radio, ShieldCheck, UserCircle, Wifi } from 'lucide-react';
+import { Clock3, Menu, Radio, ShieldCheck, UserCircle, Wifi } from 'lucide-react';
 import { brand } from '../../branding/brand';
 import type { HealthResponse, MarketAssetsResponse, PolariumAccountState, ProviderStatus } from '../../types/api';
 import StatusBadge from '../StatusBadge';
@@ -28,15 +28,14 @@ export default function Header({
           </button>
           <div>
             <p className="text-[11px] uppercase tracking-[0.36em] text-cyan-300">{brand.name}</p>
-            <h2 className="mt-1 text-2xl font-black tracking-wide text-white md:text-3xl">{provider?.provider ?? provider?.active_provider ?? 'Polarium'}</h2>
+            <h2 className="mt-1 text-2xl font-black tracking-wide text-white md:text-3xl">{provider?.provider ?? provider?.active_provider ?? brand.shortName}</h2>
           </div>
         </div>
         <div className="hidden flex-wrap items-center gap-3 xl:flex">
           <StatusPill icon={Wifi} label="API" value={health?.status ?? 'offline'} ok={health?.status === 'online'} />
-          <StatusPill icon={Cpu} label="IA" value="online" ok />
-          <StatusPill icon={Radio} label="Provider" value={provider?.provider ?? provider?.active_provider ?? 'simulated'} ok />
-          <StatusPill icon={Radio} label="Dados" value={marketAssets?.data_quality ?? 'SIMULATED'} ok={marketAssets?.data_quality === 'REAL'} />
-          <StatusPill icon={ShieldCheck} label="Conta" value={account?.account_mode ?? 'DEMO'} ok={connected} />
+          <StatusPill icon={Radio} label="Provider" value={provider?.provider ?? provider?.active_provider ?? 'Não disponível'} ok={Boolean(provider?.provider ?? provider?.active_provider)} />
+          <StatusPill icon={Radio} label="Dados" value={marketAssets?.data_quality ?? 'Não disponível'} ok={marketAssets?.data_quality === 'REAL'} />
+          <StatusPill icon={ShieldCheck} label="Conta" value={account?.account_mode ?? 'N/D'} ok={connected} />
           <StatusPill icon={ShieldCheck} label="Moeda" value={account?.currency ?? 'N/D'} ok={Boolean(account?.currency)} />
           <StatusBadge status={connected ? 'CONECTADO' : 'OFFLINE'} tone={connected ? 'success' : 'warning'} />
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-2.5">

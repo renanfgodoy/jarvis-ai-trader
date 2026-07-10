@@ -11,13 +11,13 @@ type MarketDataState = {
 const MarketDataContext = createContext<MarketDataState | null>(null);
 
 export function MarketDataProvider({ children }: { children: ReactNode }) {
-  const [asset, setAssetState] = useState('EURUSD-OTC');
+  const [asset, setAssetState] = useState('');
   const [timeframe, setTimeframe] = useState<MarketDataTimeframe>('M1');
 
   const value = useMemo<MarketDataState>(() => ({
     asset,
     timeframe,
-    setAsset: (nextAsset) => setAssetState(nextAsset.trim().toUpperCase() || 'EURUSD-OTC'),
+    setAsset: (nextAsset) => setAssetState(nextAsset.trim().toUpperCase()),
     setTimeframe
   }), [asset, timeframe]);
 

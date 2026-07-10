@@ -5,7 +5,7 @@ import CandlestickChart from './CandlestickChart';
 import { getLiveTick, getLiveWorkspace, getLiveWorkspaceWebSocketUrl } from '../services/api';
 import type { AssetScannerResult, LiveTick, LiveWorkspaceResponse, Timeframe } from '../types/api';
 
-export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', selectedAsset, autotradeEnabled = false }: { symbol?: string; timeframe?: Timeframe; selectedAsset?: AssetScannerResult; autotradeEnabled?: boolean }) {
+export default function ChartCard({ symbol, timeframe = 'M1', selectedAsset }: { symbol: string; timeframe?: Timeframe; selectedAsset?: AssetScannerResult; autotradeEnabled?: boolean }) {
   const workspace = useQuery({ queryKey: ['live-workspace', symbol, timeframe], queryFn: () => getLiveWorkspace(symbol, timeframe), refetchInterval: 8000 });
   const tickFallback = useQuery({ queryKey: ['live-tick-fallback', symbol, timeframe], queryFn: () => getLiveTick(symbol, timeframe), refetchInterval: 3000 });
   const [streamTick, setStreamTick] = useState<LiveTick | null>(null);
@@ -89,8 +89,8 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
   const candles = data?.candles ?? [];
   const latest = candles[candles.length - 1];
   const countdown = data?.countdown_seconds ?? 0;
-  const price = data?.last_price ?? latest?.close ?? 1.2328;
-  const priceText = price.toFixed(price > 10 ? 2 : 5);
+  const price = data?.last_price ?? latest?.close;
+  const priceText = typeof price === 'number' ? price.toFixed(price > 10 ? 2 : 5) : 'Não disponível';
   const trend = signal?.trend ?? 'NEUTRAL';
 
   return (
@@ -98,8 +98,8 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge icon={<Clock3 size={13} />} text={timeframe} active />
-          <Badge text={autotradeEnabled ? "AutoTrade ON" : "AutoTrade OFF"} />
-          <Badge text={`${Math.round(signal?.strength ?? 81)}%`} tone="green" />
+          <Badge text="Dados observáveis" />
+          <Badge text={signal?.strength ? `${Math.round(signal.strength)}%` : 'Score N/D'} tone="green" />
         </div>
         <div className="flex items-center gap-2">
           <button className="toolbar-btn"><span>Candlestick Pro</span></button>
@@ -115,7 +115,7 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
         <div>
           <h3 className="text-2xl font-black text-white">{data?.symbol ?? symbol}</h3>
           <p className="mt-1 text-sm text-slate-400">
-            {data?.timeframe ?? timeframe} · Score {Math.round(selectedAsset?.score ?? signal?.strength ?? 0)}% · Provider: {data?.provider ?? 'live-simulated'}
+            {data?.timeframe ?? timeframe} · Score {selectedAsset?.score || signal?.strength ? `${Math.round(selectedAsset?.score ?? signal?.strength ?? 0)}%` : 'Não disponível'} · Provider: {data?.provider ?? 'Não disponível'}
           </p>
         </div>
         <div className="text-right">
@@ -129,11 +129,11 @@ export default function ChartCard({ symbol = 'EURUSD-OTC', timeframe = 'M1', sel
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-amber-300">EMA 9</span>
-          <b className="text-white">{signal?.ema9?.toFixed(5) ?? '1.10031'}</b>
+          <b className="text-white">{signal?.ema9?.toFixed(5) ?? 'Não disponível'}</b>
           <span className="text-sky-300">EMA 21</span>
-          <b className="text-white">{signal?.ema21?.toFixed(5) ?? '1.10018'}</b>
-          <span>RSI {signal?.rsi14?.toFixed(2) ?? '32.80'}</span>
-          <span>ATR {signal?.atr14?.toFixed(5) ?? '0.00055'}</span>
+          <b className="text-white">{signal?.ema21?.toFixed(5) ?? 'Não disponível'}</b>
+          <span>RSI {signal?.rsi14?.toFixed(2) ?? 'Não disponível'}</span>
+          <span>ATR {signal?.atr14?.toFixed(5) ?? 'Não disponível'}</span>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 font-bold text-emerald-200">
           <Wifi size={13} /> {socketStatus === 'online' ? 'WebSocket online' : socketStatus === 'connecting' ? 'Conectando' : 'REST fallback'} · próxima vela 00:{String(countdown).padStart(2, '0')}

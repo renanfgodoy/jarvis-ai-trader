@@ -17,7 +17,7 @@ export function useMarketContext({
   return useMemo<MarketContext & typeof context>(() => ({
     ...context,
     broker: provider?.provider ?? provider?.active_provider ?? marketAssets?.provider ?? 'Não disponível',
-    environment: account?.demo_only === false ? 'REAL' : 'DEMO',
+    environment: account ? (account.demo_only === false ? 'REAL' : 'DEMO') : 'Não disponível',
     account: account?.email_masked ?? 'Não disponível',
     currency: account?.is_balance_synced && account.currency ? account.currency : 'Não disponível'
   }), [account, context, marketAssets, provider]);

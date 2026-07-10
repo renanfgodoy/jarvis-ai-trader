@@ -1,7 +1,7 @@
 import type { AccountCurrency, DataQuality, MarketAsset as ApiMarketAsset, Timeframe } from '../types/api';
 
 export type MarketDataTimeframe = Timeframe;
-export type MarketDataEnvironment = 'DEMO' | 'REAL';
+export type MarketDataEnvironment = 'DEMO' | 'REAL' | 'Não disponível';
 
 export type MarketAsset = {
   symbol: string;

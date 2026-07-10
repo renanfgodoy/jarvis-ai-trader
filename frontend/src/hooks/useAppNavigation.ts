@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 export type AppRoute =
   | '/login'
+  | '/dashboard'
   | '/operation'
   | '/markets'
   | '/markets/data'
   | '/markets/intelligence'
+  | '/analysis'
+  | '/replay'
   | '/connections/polarium'
   | '/diagnostics'
   | '/branding'
@@ -13,11 +16,12 @@ export type AppRoute =
   | '/labs/polarium'
   | '/settings';
 
-const routes: AppRoute[] = ['/login', '/operation', '/markets', '/markets/data', '/markets/intelligence', '/connections/polarium', '/diagnostics', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
+const routes: AppRoute[] = ['/login', '/dashboard', '/operation', '/markets', '/markets/data', '/markets/intelligence', '/analysis', '/replay', '/connections/polarium', '/diagnostics', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
 
 function normalizePath(pathname: string): AppRoute {
   if (pathname === '/branding') return '/developer/brand-center';
-  return routes.includes(pathname as AppRoute) ? (pathname as AppRoute) : '/operation';
+  if (pathname === '/' || pathname === '/operation') return '/dashboard';
+  return routes.includes(pathname as AppRoute) ? (pathname as AppRoute) : '/dashboard';
 }
 
 export function useAppNavigation() {

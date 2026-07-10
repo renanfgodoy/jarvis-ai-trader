@@ -1,18 +1,16 @@
-import { BadgeCheck, BrainCircuit, DatabaseZap, FlaskConical, Home, LineChart, PlugZap, Settings, Stethoscope } from 'lucide-react';
+import { BrainCircuit, FlaskConical, History, Home, LineChart, PlugZap, Settings } from 'lucide-react';
 import { brand } from '../../branding/brand';
 import type { AppRoute } from '../../hooks/useAppNavigation';
 import BrandLogo from '../BrandLogo';
 
 const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementType; group?: string }> = [
-  { route: '/operation', label: 'Operação', icon: Home },
+  { route: '/dashboard', label: 'Dashboard', icon: Home },
   { route: '/markets', label: 'Markets', icon: LineChart },
-  { route: '/markets/data', label: 'Market Data', icon: DatabaseZap },
-  { route: '/markets/intelligence', label: 'Market Intel', icon: BrainCircuit },
-  { route: '/connections/polarium', label: 'Conexões', icon: PlugZap },
-  { route: '/diagnostics', label: 'Diagnósticos', icon: Stethoscope },
-  { route: '/settings', label: 'Configurações', icon: Settings },
-  { route: '/developer/brand-center', label: 'Brand Center', icon: BadgeCheck, group: 'Desenvolvimento' },
-  { route: '/labs/polarium', label: 'Polarium Lab', icon: FlaskConical, group: 'Desenvolvimento' }
+  { route: '/analysis', label: 'AI Analysis', icon: BrainCircuit },
+  { route: '/replay', label: 'Replay', icon: History },
+  { route: '/connections/polarium', label: 'Connections', icon: PlugZap },
+  { route: '/settings', label: 'Settings', icon: Settings },
+  { route: '/labs/polarium', label: 'Polarium Lab', icon: FlaskConical, group: 'Developer' }
 ];
 
 export default function Sidebar({
