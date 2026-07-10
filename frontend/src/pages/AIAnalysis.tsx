@@ -1,146 +1,160 @@
-import { BarChart3, CalendarClock, DatabaseZap, LineChart, Link2, PlugZap, Radio, Timer, WalletCards } from 'lucide-react';
-import ReadinessCheckCard, { type ReadinessCheck } from '../components/analysis/ReadinessCheckCard';
-import ReadinessResultPanel, { type AnalysisReadinessState } from '../components/analysis/ReadinessResultPanel';
-import Card from '../components/Card';
+import { BarChart3, Bot, CalendarClock, DatabaseZap, LineChart, PlugZap, Radar, Radio, ShieldAlert, Wifi } from 'lucide-react';
+import MarketContextCard, { type MarketContextItem } from '../components/market-context/MarketContextCard';
+import MarketContextResultPanel, { type MarketContextReadiness } from '../components/market-context/MarketContextResultPanel';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
 import StatusBadge from '../components/StatusBadge';
 import { useRuntimeMarketContext } from '../hooks/useRuntimeMarketContext';
 
-const minimumCandles = 100;
 const unavailable = 'Não disponível';
 
 export default function AIAnalysis() {
   const marketData = useRuntimeMarketContext();
   const hasAsset = Boolean(marketData.context.asset);
-  const hasTimeframe = Boolean(marketData.context.timeframe);
   const hasBroker = marketData.context.broker !== unavailable;
   const hasSource = marketData.source.origin !== unavailable;
   const connected = marketData.status.connection === 'Conectado';
   const candlesAvailable = false;
-  const candlesCount: number | null = null;
+  const scannerAvailable = hasAsset && hasBroker && hasSource && connected;
   const hasKnownUpdate = marketData.status.lastUpdate !== 'Não verificada' && marketData.status.lastUpdate !== unavailable;
+  const marketStatus = unavailable;
 
-  const hardBlockers = [
-    !hasAsset ? 'Ativo não selecionado.' : null,
-    !hasTimeframe ? 'Timeframe não definido.' : null,
-    !hasBroker ? 'Broker indisponível.' : null,
-    !hasSource ? 'Fonte de dados indisponível.' : null
+  const blockingReasons = [
+    !hasAsset ? 'sem ativo' : null,
+    !hasBroker ? 'sem broker' : null,
+    !hasSource ? 'sem fonte' : null,
+    !connected ? 'sem conexão' : null,
+    !candlesAvailable ? 'sem candles' : null
   ].filter(Boolean) as string[];
 
-  const partialBlockers = [
-    !connected ? 'Conexão desconectada.' : null,
-    !candlesAvailable ? 'Candles não disponíveis.' : null,
-    candlesCount === null ? 'Quantidade atual de candles indisponível.' : null,
-    !hasKnownUpdate ? 'Última atualização não verificada.' : null
-  ].filter(Boolean) as string[];
-
-  const readiness: AnalysisReadinessState = hardBlockers.length
-    ? 'NOT READY'
-    : partialBlockers.length
+  const hardBlocked = !hasAsset || !hasBroker || !hasSource;
+  const readiness: MarketContextReadiness = hardBlocked
+    ? 'BLOCKED'
+    : blockingReasons.length
       ? 'PARTIAL'
       : 'READY';
 
-  const checks: ReadinessCheck[] = [
+  const dataQuality = getDataQuality({
+    hasAsset,
+    hasBroker,
+    hasSource,
+    connected,
+    candlesAvailable
+  });
+
+  const aiEngineStatus = readiness === 'READY' ? 'Preparado' : readiness === 'PARTIAL' ? 'Aguardando' : 'Bloqueado';
+
+  const items: MarketContextItem[] = [
     {
-      label: 'Ativo selecionado',
-      value: hasAsset ? marketData.context.asset : 'Não selecionado',
-      detail: hasAsset ? 'Ativo recebido do contexto compartilhado de Markets.' : 'Selecione um ativo válido em Markets.',
-      status: hasAsset ? 'ok' : 'blocked',
+      label: 'Status do mercado',
+      value: marketStatus,
+      detail: 'Abertura/fechamento não está disponível no contexto desta tela.',
+      tone: 'neutral',
       icon: BarChart3
     },
     {
-      label: 'Timeframe',
-      value: hasTimeframe ? marketData.context.timeframe : 'Não definido',
-      detail: hasTimeframe ? 'Timeframe permitido para a Sprint atual.' : 'Escolha M1, M5 ou M15 em Markets.',
-      status: hasTimeframe ? 'ok' : 'blocked',
-      icon: Timer
-    },
-    {
-      label: 'Broker',
-      value: hasBroker ? 'Disponível' : 'Indisponível',
-      detail: marketData.context.broker,
-      status: hasBroker ? 'ok' : 'blocked',
-      icon: PlugZap
-    },
-    {
       label: 'Fonte dos dados',
-      value: hasSource ? marketData.source.origin : 'Indisponível',
-      detail: 'Nenhuma fonte alternativa é inferida nesta Sprint.',
-      status: hasSource ? 'ok' : 'blocked',
+      value: hasSource ? marketData.source.origin : 'Desconhecida',
+      detail: 'Fonte recebida do contexto atual, sem fallback inventado.',
+      tone: hasSource ? 'success' : 'danger',
       icon: DatabaseZap
+    },
+    {
+      label: 'Qualidade dos dados',
+      value: dataQuality,
+      detail: 'Qualidade calculada apenas pela presença dos dados reais exigidos.',
+      tone: dataQuality === 'Excelente' ? 'success' : dataQuality === 'Parcial' ? 'warning' : 'danger',
+      icon: ShieldAlert
     },
     {
       label: 'Conexão',
       value: connected ? 'Conectado' : 'Desconectado',
       detail: marketData.source.connectorStatus,
-      status: connected ? 'ok' : 'warning',
-      icon: Link2
+      tone: connected ? 'success' : 'danger',
+      icon: Wifi
     },
     {
-      label: 'Candles disponíveis',
+      label: 'Candles',
       value: candlesAvailable ? 'Disponível' : unavailable,
-      detail: 'Nenhum endpoint de candles reais foi consumido por esta tela.',
-      status: candlesAvailable ? 'ok' : 'warning',
+      detail: 'Nenhuma quantidade de candles é inferida sem dado real.',
+      tone: candlesAvailable ? 'success' : 'warning',
       icon: LineChart
     },
     {
-      label: 'Quantidade mínima',
-      value: candlesCount === null ? `Necessário ${minimumCandles} candles · Atual indisponível` : `Necessário ${minimumCandles} candles · Atual ${candlesCount}`,
-      detail: 'A quantidade atual não é inventada quando o dado não existe.',
-      status: candlesCount !== null && candlesCount >= minimumCandles ? 'ok' : 'warning',
-      icon: Radio
+      label: 'Scanner',
+      value: scannerAvailable ? 'Disponível' : 'Bloqueado',
+      detail: scannerAvailable ? 'Contexto mínimo presente para futura leitura.' : 'Scanner não é liberado sem ativo, broker, fonte e conexão.',
+      tone: scannerAvailable ? 'success' : 'warning',
+      icon: Radar
+    },
+    {
+      label: 'AI Engine',
+      value: aiEngineStatus,
+      detail: 'A engine de IA ainda não é executada nesta Sprint.',
+      tone: readiness === 'READY' ? 'success' : readiness === 'PARTIAL' ? 'warning' : 'danger',
+      icon: Bot
     },
     {
       label: 'Última atualização',
       value: marketData.status.lastUpdate,
-      detail: hasKnownUpdate ? 'Timestamp conhecido recebido do estado de conexão.' : 'Nenhum timestamp real disponível.',
-      status: hasKnownUpdate ? 'ok' : 'warning',
+      detail: hasKnownUpdate ? 'Timestamp conhecido recebido do estado atual.' : 'Nenhum timestamp real disponível.',
+      tone: hasKnownUpdate ? 'success' : 'warning',
       icon: CalendarClock
     }
   ];
 
-  const reasons = readiness === 'READY' ? [] : [...hardBlockers, ...partialBlockers];
-
   return (
     <PageContainer>
-      <PageTitle eyebrow="Friday Trade V2" title="AI Analysis">
+      <PageTitle eyebrow="Friday Trade V2" title="Market Context Engine">
         <StatusBadge status={readiness} tone={readiness === 'READY' ? 'success' : readiness === 'PARTIAL' ? 'warning' : 'danger'} />
       </PageTitle>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <Summary label="Ativo" value={marketData.context.asset || 'Não selecionado'} />
-        <Summary label="Timeframe" value={marketData.context.timeframe || 'Não definido'} />
         <Summary label="Broker" value={marketData.context.broker} />
         <Summary label="Conta" value={marketData.context.account} />
         <Summary label="Ambiente" value={marketData.context.environment} />
+        <Summary label="Timeframe" value={marketData.context.timeframe || 'Não definido'} />
+        <Summary label="Última atualização" value={marketData.status.lastUpdate} />
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Checklist</p>
-            <h2 className="mt-1 text-xl font-black text-white">Podemos analisar este ativo?</h2>
-          </div>
-          <WalletCards className="text-cyan-300" size={22} />
-        </div>
-      </Card>
-
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {checks.map((check) => (
-          <ReadinessCheckCard key={check.label} check={check} />
+        {items.map((item) => (
+          <MarketContextCard key={item.label} item={item} />
         ))}
       </div>
 
-      <ReadinessResultPanel state={readiness} reasons={reasons} />
+      <MarketContextResultPanel readiness={readiness} reasons={blockingReasons} />
     </PageContainer>
   );
+}
+
+function getDataQuality({
+  hasAsset,
+  hasBroker,
+  hasSource,
+  connected,
+  candlesAvailable
+}: {
+  hasAsset: boolean;
+  hasBroker: boolean;
+  hasSource: boolean;
+  connected: boolean;
+  candlesAvailable: boolean;
+}) {
+  if (hasAsset && hasBroker && hasSource && connected && candlesAvailable) return 'Excelente';
+  if (hasAsset && hasBroker && hasSource && connected) return 'Parcial';
+  if (hasAsset && hasBroker && hasSource) return 'Parcial';
+  return 'Insuficiente';
 }
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <div className="flex items-center gap-2 text-slate-500">
+        <PlugZap size={14} />
+        <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
+      </div>
       <p className="mt-2 break-words text-sm font-black text-white">{value}</p>
     </div>
   );
