@@ -382,3 +382,134 @@ export type PolariumDirectSessionState = {
   message: string;
   safety_rules: string[];
 };
+
+export type DiagnosticStatus = 'OK' | 'WARN' | 'FAIL' | 'SKIPPED';
+
+export type DiagnosticCheck = {
+  name: string;
+  status: DiagnosticStatus;
+  message: string;
+  detail: Record<string, unknown>;
+};
+
+export type DiagnosticSummaryResponse = {
+  version: string;
+  status: DiagnosticStatus;
+  checks: DiagnosticCheck[];
+  next_action: string;
+};
+
+export type OAuthDiagnosticResponse = {
+  module: 'oauth';
+  status: DiagnosticStatus;
+  checks: DiagnosticCheck[];
+  next_action: string;
+};
+
+export type WebSocketDiagnosticRequest = {
+  ws_url?: string | null;
+  bearer_token?: string | null;
+  timeout_seconds?: number;
+  send_probe?: boolean;
+};
+
+export type WebSocketDiagnosticResponse = {
+  module: 'websocket';
+  status: DiagnosticStatus;
+  ws_url: string;
+  connected: boolean;
+  close_code?: number | null;
+  close_reason?: string | null;
+  first_message_preview?: string | null;
+  checks: DiagnosticCheck[];
+  next_action: string;
+};
+
+export type StreamDiagnosticResponse = {
+  module: 'stream';
+  status: DiagnosticStatus;
+  events_detected: Record<string, number>;
+  balance_payload_detected: boolean;
+  candle_payload_detected: boolean;
+  price_payload_detected: boolean;
+  checks: DiagnosticCheck[];
+  next_action: string;
+};
+
+export type InspectorFinding = {
+  name: string;
+  status: DiagnosticStatus;
+  message: string;
+  detail: Record<string, unknown>;
+};
+
+export type HarInspectResponse = {
+  module: 'session_inspector';
+  status: DiagnosticStatus;
+  total_entries: number;
+  oauth_authorize_found: boolean;
+  oauth_token_found: boolean;
+  websocket_found: boolean;
+  bearer_found: boolean;
+  cookie_auth_found: boolean;
+  findings: InspectorFinding[];
+  next_action: string;
+};
+
+export type ClientStorageProbeRequest = {
+  local_storage_keys: string[];
+  session_storage_keys: string[];
+  cookie_names: string[];
+  origin?: string | null;
+};
+
+export type ClientStorageProbeResponse = {
+  module: 'client_storage_probe';
+  status: DiagnosticStatus;
+  findings: InspectorFinding[];
+  next_action: string;
+};
+
+export type WsMessageSummary = {
+  index: number;
+  direction: string;
+  name?: string | null;
+  microservice_name?: string | null;
+  request_id?: string | null;
+  active_id?: number | null;
+  has_balance: boolean;
+  has_candle: boolean;
+  has_price: boolean;
+  has_auth_hint: boolean;
+  preview: Record<string, unknown>;
+};
+
+export type WsRecorderFinding = {
+  name: string;
+  status: DiagnosticStatus;
+  message: string;
+  detail: Record<string, unknown>;
+};
+
+export type WsRecordingResponse = {
+  module: 'ws_session_recorder';
+  status: DiagnosticStatus;
+  total_lines: number;
+  parsed_messages: number;
+  detected_events: Record<string, number>;
+  first_messages: WsMessageSummary[];
+  auth_candidates: WsMessageSummary[];
+  balance_candidates: WsMessageSummary[];
+  candle_candidates: WsMessageSummary[];
+  price_candidates: WsMessageSummary[];
+  findings: WsRecorderFinding[];
+  next_action: string;
+};
+
+export type WsRecorderConsoleSnippetResponse = {
+  module: 'ws_session_recorder_snippet';
+  status: DiagnosticStatus;
+  title: string;
+  warning: string;
+  snippet: string;
+};

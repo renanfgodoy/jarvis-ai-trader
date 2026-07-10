@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "J.A.R.V.I.S Polarium Bridge",
+  "version": "0.20.0",
+  "description": "Read-only local bridge for forwarding Polarium WebSocket account/market events to J.A.R.V.I.S running on localhost.",
+  "permissions": [],
+  "host_permissions": [
+    "https://trade.polariumbroker.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://trade.polariumbroker.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

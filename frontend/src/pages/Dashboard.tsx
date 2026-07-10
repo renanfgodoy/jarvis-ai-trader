@@ -12,6 +12,9 @@ import Timeline from '../components/Timeline';
 import TimeframeControl from '../components/TimeframeControl';
 import PolariumLoginPanel from '../components/PolariumLoginPanel';
 import PolariumOAuthLabPanel from '../components/PolariumOAuthLabPanel';
+import PolariumDiagnosticsPanel from '../components/PolariumDiagnosticsPanel';
+import PolariumSessionInspectorPanel from '../components/PolariumSessionInspectorPanel';
+import PolariumWsRecorderPanel from '../components/PolariumWsRecorderPanel';
 import { checkAutoTradeGate, debugPolariumWsMessage, getCurrentProvider, getExecutionStatus, getHealth, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getPolariumStatus, getRiskCheck, getSignalAnalysis, loginPolarium, logoutPolarium, syncPolarium } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
@@ -193,6 +196,9 @@ export default function Dashboard() {
                   onIngestPayload={(payloadText) => polariumPayloadIngest.mutate(payloadText)}
                 />
                 <PolariumOAuthLabPanel />
+                <PolariumDiagnosticsPanel />
+                <PolariumSessionInspectorPanel />
+                <PolariumWsRecorderPanel />
                 <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />

@@ -195,3 +195,43 @@ export async function clearPolariumDirectSession(): Promise<{ success: boolean; 
   const { data } = await api.post('/polarium/direct/logout');
   return data;
 }
+
+export async function getPolariumDiagnosticSummary(): Promise<import('../types/api').DiagnosticSummaryResponse> {
+  const { data } = await api.get('/polarium/diagnostics/summary');
+  return data;
+}
+
+export async function getPolariumOAuthDiagnostic(): Promise<import('../types/api').OAuthDiagnosticResponse> {
+  const { data } = await api.get('/polarium/diagnostics/oauth');
+  return data;
+}
+
+export async function runPolariumWebSocketDiagnostic(payload: import('../types/api').WebSocketDiagnosticRequest): Promise<import('../types/api').WebSocketDiagnosticResponse> {
+  const { data } = await api.post('/polarium/diagnostics/websocket', payload);
+  return data;
+}
+
+export async function runPolariumStreamDiagnostic(payloads: Record<string, unknown>[]): Promise<import('../types/api').StreamDiagnosticResponse> {
+  const { data } = await api.post('/polarium/diagnostics/stream', { payloads });
+  return data;
+}
+
+export async function inspectPolariumHar(har: Record<string, unknown>): Promise<import('../types/api').HarInspectResponse> {
+  const { data } = await api.post('/polarium/session-inspector/har', { har, redact: true });
+  return data;
+}
+
+export async function probePolariumClientStorage(payload: import('../types/api').ClientStorageProbeRequest): Promise<import('../types/api').ClientStorageProbeResponse> {
+  const { data } = await api.post('/polarium/session-inspector/client-storage', payload);
+  return data;
+}
+
+export async function analyzePolariumWsFrames(raw: string): Promise<import('../types/api').WsRecordingResponse> {
+  const { data } = await api.post('/polarium/ws-recorder/analyze', { raw, redact: true });
+  return data;
+}
+
+export async function getPolariumWsRecorderSnippet(): Promise<import('../types/api').WsRecorderConsoleSnippetResponse> {
+  const { data } = await api.get('/polarium/ws-recorder/snippet');
+  return data;
+}
