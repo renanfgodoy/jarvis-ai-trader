@@ -12,6 +12,7 @@ import {
   Shield,
   Wallet
 } from 'lucide-react';
+import { brand } from '../branding/brand';
 
 const items = [
   { label: 'Dashboard', icon: LayoutDashboard, active: true },
@@ -33,8 +34,8 @@ export default function Sidebar() {
           <Gauge size={26} />
         </div>
         <div>
-          <h1 className="text-lg font-black tracking-[0.24em] text-white">J.A.R.V.I.S</h1>
-          <p className="text-xs font-bold text-cyan-300">AI TRADER</p>
+          <h1 className="text-lg font-black tracking-[0.24em] text-white">{brand.logo.wordmark}</h1>
+          <p className="text-xs font-bold text-cyan-300">{brand.logo.descriptor}</p>
         </div>
       </div>
 
@@ -44,7 +45,7 @@ export default function Sidebar() {
             <Wallet size={22} />
           </div>
           <div>
-            <p className="text-base font-black text-white">Renan</p>
+            <p className="text-base font-black text-white">{brand.operatorName}</p>
             <p className="text-xs uppercase tracking-widest text-slate-400">Conta Polarium</p>
           </div>
         </div>
@@ -80,7 +81,7 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-      <p className="mt-4 text-xs tracking-widest text-slate-500">v0.13.2 PREMIUM</p>
+      <p className="mt-4 text-xs tracking-widest text-slate-500">v{brand.version}</p>
     </aside>
   );
 }

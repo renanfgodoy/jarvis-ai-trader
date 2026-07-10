@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ExternalLink, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
+import { brand } from '../branding/brand';
 import { getPolariumOAuthConfig, getPolariumOAuthSession, startPolariumOAuth } from '../services/api';
 
 export default function PolariumOAuthLabPanel() {
@@ -30,7 +31,7 @@ export default function PolariumOAuthLabPanel() {
       {!config.data?.configured && (
         <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-[11px] leading-relaxed text-amber-100/90">
           <p className="flex items-center gap-2 font-black uppercase tracking-widest text-amber-200"><ShieldAlert size={13} /> Falta configuração</p>
-          <p className="mt-1">Configure POLARIUM_OAUTH_CLIENT_ID próprio/autorizado no .env. As URLs authorize/token já vêm preenchidas pelo J.A.R.V.I.S. Não use credenciais de outro app.</p>
+          <p className="mt-1">Configure POLARIUM_OAUTH_CLIENT_ID próprio/autorizado no .env. As URLs authorize/token já vêm preenchidas pelo {brand.shortName}. Não use credenciais de outro app.</p>
         </div>
       )}
 

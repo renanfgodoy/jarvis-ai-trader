@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LockKeyhole, LogOut, RefreshCw, ShieldAlert, ShieldCheck, WalletCards, Wifi } from 'lucide-react';
+import { brand } from '../branding/brand';
 import type { PolariumAccountState } from '../types/api';
 
 export default function PolariumLoginPanel({
@@ -59,7 +60,7 @@ export default function PolariumLoginPanel({
             </div>
             {!synced && (
               <p className="mt-2 text-[11px] leading-relaxed text-amber-100/80">
-                Sessão salva, mas o saldo real ainda não foi sincronizado por uma conexão autorizada. O J.A.R.V.I.S não exibe saldo falso e mantém o AutoTrade bloqueado.
+                Sessão salva, mas o saldo real ainda não foi sincronizado por uma conexão autorizada. O {brand.shortName} não exibe saldo falso e mantém o AutoTrade bloqueado.
               </p>
             )}
           </div>

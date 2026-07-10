@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Bot, CircleDot, Download, TrendingUp } from 'lucide-react';
-import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
+import { useQuery } from '@tanstack/react-query';
+import { Bot, CircleDot, Download, TrendingUp } from 'lucide-react';
 import TopAssets from '../components/TopAssets';
-import AIStatus from '../components/AIStatus';
 import MarketIntelligencePanel from '../components/MarketIntelligencePanel';
 import ChartCard from '../components/ChartCard';
 import RiskCard from '../components/RiskCard';
 import Timeline from '../components/Timeline';
 import TimeframeControl from '../components/TimeframeControl';
-import PolariumLoginPanel from '../components/PolariumLoginPanel';
-import PolariumOAuthLabPanel from '../components/PolariumOAuthLabPanel';
-import PolariumDiagnosticsPanel from '../components/PolariumDiagnosticsPanel';
-import PolariumSessionInspectorPanel from '../components/PolariumSessionInspectorPanel';
-import PolariumWsRecorderPanel from '../components/PolariumWsRecorderPanel';
-import { checkAutoTradeGate, debugPolariumWsMessage, getCurrentProvider, getExecutionStatus, getHealth, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getPolariumStatus, getRiskCheck, getSignalAnalysis, loginPolarium, logoutPolarium, syncPolarium } from '../services/api';
+import PageContainer from '../components/PageContainer';
+import PageTitle from '../components/PageTitle';
+import { brand } from '../branding/brand';
+import { checkAutoTradeGate, getExecutionStatus, getMarketAssets, getMarketIntelligence, getMarketIntelligenceTop, getPolariumStatus, getRiskCheck, getSignalAnalysis } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
@@ -23,27 +18,7 @@ export default function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe | null>(null);
   const [autoTradeEnabled, setAutoTradeEnabled] = useState(false);
   const [accountCurrency, setAccountCurrency] = useState<AccountCurrency>('BRL');
-  const queryClient = useQueryClient();
   const polarium = useQuery({ queryKey: ['polarium-status'], queryFn: getPolariumStatus, refetchInterval: 5000 });
-  const polariumLogin = useMutation({
-    mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) => loginPolarium({ email, password, remember_session: remember, force_demo: true }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
-  });
-  const polariumLogout = useMutation({
-    mutationFn: logoutPolarium,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
-  });
-  const polariumSync = useMutation({
-    mutationFn: syncPolarium,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
-  });
-  const polariumPayloadIngest = useMutation({
-    mutationFn: (payloadText: string) => {
-      const parsed = JSON.parse(payloadText);
-      return debugPolariumWsMessage({ payload: parsed, force_demo: true });
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polarium-status'] })
-  });
   const effectiveAccount = polarium.data;
   const syncedAccount = Boolean(effectiveAccount?.is_balance_synced && ['REAL_SESSION', 'DEVTOOLS_PAYLOAD'].includes(effectiveAccount?.data_source ?? '')); 
   const resolvedCurrency = syncedAccount && effectiveAccount?.currency ? effectiveAccount.currency : accountCurrency;
@@ -56,8 +31,6 @@ export default function Dashboard() {
     }
   }, [effectiveAccount?.currency, syncedAccount]);
 
-  const health = useQuery({ queryKey: ['health'], queryFn: getHealth, refetchInterval: 5000 });
-  const provider = useQuery({ queryKey: ['provider'], queryFn: getCurrentProvider, refetchInterval: 5000 });
   const marketAssets = useQuery({ queryKey: ['market-assets'], queryFn: getMarketAssets, refetchInterval: 5000 });
   const scanner = useQuery({
     queryKey: ['scanner', activeTimeframe],
@@ -141,13 +114,8 @@ export default function Dashboard() {
   const gateStatus = gate.data?.status ?? (autoTradeEnabled ? 'BLOCKED' : 'WAITING');
 
   return (
-    <div className="min-h-screen bg-[#05051f] text-slate-200">
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_36%),linear-gradient(180deg,#060626,#05051f)]" />
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="min-w-0 flex-1">
-          <Header health={health.data} provider={provider.data} marketAssets={marketAssets.data} />
-          <section className="mx-auto max-w-[1960px] space-y-3 p-3 2xl:p-4">
+    <PageContainer>
+            <PageTitle eyebrow="Operação" title="Operation Workspace" />
             <TimeframeControl
               selected={selectedTimeframe}
               onSelect={(tf) => {
@@ -187,18 +155,6 @@ export default function Dashboard() {
                 </div>
               </div>
               <aside className="space-y-3 xl:sticky xl:top-3 xl:self-start">
-                <PolariumLoginPanel
-                  account={polarium.data}
-                  loading={polariumLogin.isPending || polariumLogout.isPending || polariumSync.isPending || polariumPayloadIngest.isPending}
-                  onLogin={(email, password, remember) => polariumLogin.mutate({ email, password, remember })}
-                  onLogout={() => polariumLogout.mutate()}
-                  onSync={() => polariumSync.mutate()}
-                  onIngestPayload={(payloadText) => polariumPayloadIngest.mutate(payloadText)}
-                />
-                <PolariumOAuthLabPanel />
-                <PolariumDiagnosticsPanel />
-                <PolariumSessionInspectorPanel />
-                <PolariumWsRecorderPanel />
                 <MarketIntelligencePanel intelligence={intelligence.data} enabled={Boolean(selectedTimeframe)} />
                 <RiskCard risk={risk.data} compact />
                 <ExecutionPanel status={execution.data?.status ?? 'READY'} mode={execution.data?.mode ?? 'DEMO'} executions={execution.data?.executions ?? 0} gateStatus={gate.data?.status ?? 'WAITING'} />
@@ -212,10 +168,7 @@ export default function Dashboard() {
             </div>
 
             <InstallPanel />
-          </section>
-        </main>
-      </div>
-    </div>
+          </PageContainer>
   );
 }
 
@@ -343,7 +296,7 @@ function RecentOperations() {
 }
 
 function InstallPanel() {
-  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">J.A.R.V.I.S AI TRADER</p><p className="mt-2 text-sm text-slate-400">V0.17.0 · Professional Trading Workspace.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
+  return <div className="panel flex items-center justify-between p-4"><div><p className="eyebrow">{brand.name}</p><p className="mt-2 text-sm text-slate-400">v{brand.version} · {brand.subtitle}.</p></div><button className="toolbar-btn"><Download size={16} /> Instalar PWA</button></div>;
 }
 
 const fallbackAsset: AssetScannerResult = { rank: 1, symbol: 'EURUSD-OTC', signal: 'BUY', score: 94, risk_level: 'LOW', status: 'APPROVED' };
