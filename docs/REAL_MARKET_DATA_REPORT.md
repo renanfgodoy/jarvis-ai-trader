@@ -512,3 +512,26 @@ Documento principal: `docs/ws/POLARIUM_DIRECTED_CORRELATION.md`.
 
 A próxima Sprint deve capturar uma sessão dirigida com registro visual/manual de ativo e timeframe no momento da coleta, para fechar a correlação antes de criar o Candle Parser.
 
+## Sprint V3.0 — Market Event Engine passivo
+
+Foi criado o primeiro núcleo passivo para rotear e normalizar mensagens de mercado sanitizadas da Polarium.
+
+### Escopo implementado
+
+- `app/market/events/event_types.py` centraliza os nomes de eventos observados.
+- `app/market/events/router.py` recebe apenas mensagens `dict` já decodificadas e não abre WebSocket.
+- `app/market/events/models.py` define contratos internos para resultado de roteamento, erro estruturado e candle normalizado.
+- `app/market/events/parsers/candle_generated.py` normaliza `candle-generated`.
+- `app/market/events/parsers/first_candles.py` normaliza `first-candles`.
+
+### Garantias preservadas
+
+- `symbol` permanece `None` porque o ativo visual ainda não está confirmado.
+- `timeframe` permanece `None` porque `size` ainda não está confirmado como M1, M5 ou M15.
+- `min` é preservado como `low_candidate`.
+- `max` é preservado como `high_candidate`.
+- `mapping_verified` permanece `False`.
+
+### Fora do runtime
+
+O engine não conecta na Polarium, não altera Connector, não altera APIs, não cria endpoint, não executa ordens e não produz sinais. Ele é uma camada testável para receber payloads já sanitizados.
