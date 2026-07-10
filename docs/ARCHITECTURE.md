@@ -30,6 +30,7 @@ app/
       execution/
       diagnostics/
   market/
+    data/
     providers/
     scanner/
     candles/
@@ -48,6 +49,7 @@ frontend/
   pages/
   components/
   hooks/
+  market-data/
   services/
   contexts/
   types/
@@ -111,6 +113,7 @@ O Connector nunca executa IA, nunca decide trade e nunca calcula risco. Ele apen
 
 Responsavel pela representacao de mercado:
 
+- market data engine
 - candles
 - ticks
 - assets
@@ -118,6 +121,21 @@ Responsavel pela representacao de mercado:
 - providers
 
 Market normaliza dados para que AI, Risk e Execution nao dependam diretamente de uma corretora ou provider especifico.
+
+### Market Data Engine
+
+O Market Data Engine e a fonte unica de contexto de mercado para o frontend e para futuras camadas de decisao. Ele organiza ativo, timeframe, broker, ambiente, conta, moeda, disponibilidade, fonte dos dados e ultima atualizacao sem criar indicadores, sinais, IA ou estados ficticios.
+
+```mermaid
+flowchart TD
+    Sources["Market Data Sources"] --> Engine["Market Data Engine"]
+    Engine --> Snapshot["Market Snapshot"]
+    Snapshot --> FutureAI["Future AI Decision Engine"]
+    FutureAI --> Probability["Future Probability Engine"]
+    Probability --> Operation["Operation"]
+```
+
+Nenhum modulo novo deve consumir providers diretamente quando precisar de contexto de mercado. A leitura deve passar por contratos do Market Data Engine ou por APIs ja normalizadas pelo dominio Market.
 
 ### AI
 
@@ -164,6 +182,7 @@ Diagnostics nunca participa do fluxo operacional de trading. Ele observa, coleta
 ## Responsabilidades de frontend
 
 - Dashboard: composicao principal da experiencia operacional.
+- Market Data: fonte compartilhada de ativo, timeframe, broker e ambiente.
 - Scanner: lista e ranking de oportunidades.
 - Chart: graficos de candles, preco, timeframe e contexto visual.
 - Orders: visualizacao de ordens, simulacoes e estado de execucao.

@@ -8,11 +8,12 @@ import TimeframeControl from '../components/TimeframeControl';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
 import { brand } from '../branding/brand';
+import { useMarketDataContext } from '../market-data/MarketDataContext';
 import { checkAutoTradeGate, getExecutionStatus, getPolariumStatus, getRiskCheck } from '../services/api';
 import type { AccountCurrency, AssetScannerResult, Timeframe } from '../types/api';
 
 export default function Dashboard() {
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe | null>(null);
+  const marketContext = useMarketDataContext();
   const [autoTradeEnabled, setAutoTradeEnabled] = useState(false);
   const [accountCurrency, setAccountCurrency] = useState<AccountCurrency>('BRL');
   const polarium = useQuery({ queryKey: ['polarium-status'], queryFn: getPolariumStatus, refetchInterval: 5000 });
@@ -20,7 +21,7 @@ export default function Dashboard() {
   const syncedAccount = Boolean(effectiveAccount?.is_balance_synced && ['REAL_SESSION', 'DEVTOOLS_PAYLOAD'].includes(effectiveAccount?.data_source ?? '')); 
   const resolvedCurrency = syncedAccount && effectiveAccount?.currency ? effectiveAccount.currency : accountCurrency;
   const entryValue = resolvedCurrency === 'BRL' ? Math.max(10, effectiveAccount?.minimum_entry ?? 5) : Math.max(1, effectiveAccount?.minimum_entry ?? 1);
-  const activeTimeframe = selectedTimeframe ?? 'M1';
+  const activeTimeframe = marketContext.timeframe;
 
   useEffect(() => {
     if (syncedAccount && effectiveAccount?.currency) {
@@ -30,12 +31,12 @@ export default function Dashboard() {
 
   const risk = useQuery({ queryKey: ['risk', resolvedCurrency, entryValue], queryFn: () => getRiskCheck(resolvedCurrency, entryValue), refetchInterval: 5000 });
   const execution = useQuery({ queryKey: ['execution'], queryFn: getExecutionStatus, refetchInterval: 3000 });
-  const selectedAsset = useMemo(() => fallbackAsset, []);
+  const selectedAsset = useMemo(() => ({ ...fallbackAsset, symbol: marketContext.asset, timeframe: marketContext.timeframe }), [marketContext.asset, marketContext.timeframe]);
   const activeSymbol = selectedAsset.symbol;
 
   const hasGatePayload = Boolean(
     autoTradeEnabled &&
-    selectedTimeframe &&
+    marketContext.timeframe &&
     activeSymbol &&
     syncedAccount &&
     effectiveAccount?.account_mode === 'DEMO' &&
@@ -48,10 +49,10 @@ export default function Dashboard() {
   );
 
   const gate = useQuery({
-    queryKey: ['autotrade-gate', activeSymbol, selectedTimeframe, resolvedCurrency, entryValue, autoTradeEnabled, selectedAsset.score, risk.data?.allowed, execution.data?.status, syncedAccount, effectiveAccount?.balance],
+    queryKey: ['autotrade-gate', activeSymbol, marketContext.timeframe, resolvedCurrency, entryValue, autoTradeEnabled, selectedAsset.score, risk.data?.allowed, execution.data?.status, syncedAccount, effectiveAccount?.balance],
     queryFn: () => checkAutoTradeGate({
       symbol: activeSymbol,
-      timeframe: selectedTimeframe,
+      timeframe: marketContext.timeframe,
       account_type: effectiveAccount?.account_mode ?? 'DEMO',
       currency: resolvedCurrency,
       balance: typeof effectiveAccount?.balance === 'number' ? effectiveAccount.balance : 0,
@@ -75,9 +76,9 @@ export default function Dashboard() {
     <PageContainer>
             <PageTitle eyebrow="Operação" title="Operation Workspace" />
             <TimeframeControl
-              selected={selectedTimeframe}
+              selected={marketContext.timeframe}
               onSelect={(tf) => {
-                setSelectedTimeframe(tf);
+                marketContext.setTimeframe(tf);
                 // Safety rule: timeframe selection starts analysis immediately; changing TF pauses execution mode.
                 setAutoTradeEnabled(false);
               }}
@@ -88,7 +89,7 @@ export default function Dashboard() {
 
             <TradeCommandBar
               selectedAsset={selectedAsset}
-              timeframe={selectedTimeframe}
+              timeframe={marketContext.timeframe}
               countdown={gateStatus}
               autoTradeEnabled={autoTradeEnabled}
               gateAllowed={Boolean(gate.data?.allowed)}
@@ -98,7 +99,7 @@ export default function Dashboard() {
               <div className="min-w-0 space-y-3">
                 <ChartCard symbol={activeSymbol} timeframe={activeTimeframe} selectedAsset={selectedAsset} autotradeEnabled={autoTradeEnabled} />
                 <div className="grid gap-3 xl:grid-cols-[1.05fr_0.9fr_1.25fr]">
-                  <TradingManagement selectedAsset={selectedAsset} timeframe={selectedTimeframe} currency={resolvedCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} accountConnected={Boolean(effectiveAccount?.connected)} balance={syncedAccount && typeof effectiveAccount?.balance === 'number' ? effectiveAccount.balance : 0} />
+                  <TradingManagement selectedAsset={selectedAsset} timeframe={marketContext.timeframe} currency={resolvedCurrency} setCurrency={setAccountCurrency} entryValue={entryValue} gateAllowed={Boolean(gate.data?.allowed)} accountConnected={Boolean(effectiveAccount?.connected)} balance={syncedAccount && typeof effectiveAccount?.balance === 'number' ? effectiveAccount.balance : 0} />
                   <StatsPanel />
                   <CompactLog />
                 </div>

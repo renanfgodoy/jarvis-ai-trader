@@ -9,7 +9,7 @@ export function useMarketOverview({
 }: {
   marketAssets?: MarketAssetsResponse;
   scannerActive: boolean;
-  selectedTimeframe: Timeframe | 'H1';
+  selectedTimeframe: Timeframe;
   lastUpdated: string;
 }) {
   return useMemo(() => {
@@ -20,7 +20,7 @@ export function useMarketOverview({
       totalAssets: marketAssets?.total_assets ?? assets.length,
       otcCount,
       synchronized: marketAssets ? (marketAssets.data_quality !== 'UNAVAILABLE' ? 'Sim' : 'Não disponível') : 'Não disponível',
-      scannerStatus: scannerActive ? 'Ativo' : selectedTimeframe === 'H1' ? 'Aguardando suporte H1' : 'Não disponível',
+      scannerStatus: scannerActive ? 'Ativo' : 'Não disponível',
       lastUpdated
     };
   }, [lastUpdated, marketAssets, scannerActive, selectedTimeframe]);

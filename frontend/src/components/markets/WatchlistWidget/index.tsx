@@ -32,7 +32,7 @@ export default function WatchlistWidget({
           <button
             key={item.symbol}
             type="button"
-            onClick={() => onSelect(item.symbol)}
+            onClick={() => onSelect(item.providerSymbol ?? item.symbol)}
             className={`w-full rounded-2xl border p-3 text-left transition ${
               item.isSelected
                 ? 'border-cyan-400/40 bg-cyan-400/10'

@@ -1,7 +1,7 @@
 import { Clock3 } from 'lucide-react';
 import type { MarketWorkspaceTimeframe } from '../../../hooks/useMarketStatus';
 
-const timeframes: MarketWorkspaceTimeframe[] = ['M1', 'M5', 'M15', 'H1'];
+const timeframes: MarketWorkspaceTimeframe[] = ['M1', 'M5', 'M15'];
 
 export default function TimeframeSelector({
   selected,

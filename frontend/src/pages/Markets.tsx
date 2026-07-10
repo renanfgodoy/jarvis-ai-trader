@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import MarketOverviewWidget from '../components/markets/MarketOverviewWidget';
 import MarketScannerWidget from '../components/markets/MarketScannerWidget';
 import MarketStatusWidget, { type MarketStatusItem } from '../components/markets/MarketStatusWidget';
@@ -9,18 +9,18 @@ import PageTitle from '../components/PageTitle';
 import StatusBadge from '../components/StatusBadge';
 import { brand } from '../branding/brand';
 import { useMarketOverview } from '../hooks/useMarketOverview';
-import { useMarketStatus, type MarketWorkspaceTimeframe } from '../hooks/useMarketStatus';
+import { useMarketStatus } from '../hooks/useMarketStatus';
 import { useWatchlist } from '../hooks/useWatchlist';
+import { useMarketDataContext } from '../market-data/MarketDataContext';
 
 export default function Markets() {
-  const [selectedTimeframe, setSelectedTimeframe] = useState<MarketWorkspaceTimeframe>('M1');
-  const [selectedScannerSymbol, setSelectedScannerSymbol] = useState('EURUSD-OTC');
-  const market = useMarketStatus(selectedTimeframe);
+  const marketContext = useMarketDataContext();
+  const market = useMarketStatus(marketContext.timeframe);
   const watchlist = useWatchlist(market.marketAssets.data?.assets ?? []);
   const overview = useMarketOverview({
     marketAssets: market.marketAssets.data,
-    scannerActive: Boolean(market.scanner.data && selectedTimeframe !== 'H1'),
-    selectedTimeframe,
+    scannerActive: Boolean(market.scanner.data),
+    selectedTimeframe: marketContext.timeframe,
     lastUpdated: market.lastUpdated
   });
 
@@ -46,24 +46,27 @@ export default function Markets() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <HeaderMetric label="Última atualização" value={market.lastUpdated} />
-        <HeaderMetric label="Timeframe" value={selectedTimeframe} />
+        <HeaderMetric label="Timeframe" value={marketContext.timeframe} />
         <HeaderMetric label="Mercado atual" value={currentMarket} />
         <HeaderMetric label="Broker conectado" value={broker} />
         <HeaderMetric label="Ambiente" value={environment} />
       </div>
 
-      <TimeframeSelector selected={selectedTimeframe} onSelect={setSelectedTimeframe} />
+      <TimeframeSelector selected={marketContext.timeframe} onSelect={marketContext.setTimeframe} />
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <MarketScannerWidget
           scanner={market.scanner.data}
           marketAssets={market.marketAssets.data}
-          selectedTimeframe={selectedTimeframe}
-          selectedSymbol={selectedScannerSymbol}
-          onSelectSymbol={setSelectedScannerSymbol}
+          selectedTimeframe={marketContext.timeframe}
+          selectedSymbol={marketContext.asset}
+          onSelectSymbol={marketContext.setAsset}
           loading={market.scanner.isLoading}
         />
-        <WatchlistWidget items={watchlist.items} onSelect={watchlist.setSelectedSymbol} />
+        <WatchlistWidget items={watchlist.items} onSelect={(symbol) => {
+          watchlist.setSelectedSymbol(symbol);
+          marketContext.setAsset(symbol);
+        }} />
       </div>
 
       <MarketStatusWidget items={statusItems} />

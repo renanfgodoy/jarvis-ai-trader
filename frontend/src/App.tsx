@@ -4,6 +4,7 @@ import Branding from './pages/Branding';
 import PolariumConnections from './pages/connections/PolariumConnections';
 import Diagnostics from './pages/Diagnostics';
 import Login from './pages/Login';
+import MarketData from './pages/MarketData';
 import MarketIntelligence from './pages/MarketIntelligence';
 import Markets from './pages/Markets';
 import Operation from './pages/Operation';
@@ -11,6 +12,7 @@ import PolariumLab from './pages/labs/PolariumLab';
 import Settings from './pages/Settings';
 import { brand } from './branding/brand';
 import { useEffect } from 'react';
+import { MarketDataProvider } from './market-data/MarketDataContext';
 
 export default function App() {
   const { route, navigate } = useAppNavigation();
@@ -32,15 +34,18 @@ export default function App() {
   }
 
   return (
-    <MainLayout activeRoute={route} onNavigate={navigate}>
-      {route === '/connections/polarium' && <PolariumConnections />}
-      {route === '/markets' && <Markets />}
-      {route === '/markets/intelligence' && <MarketIntelligence />}
-      {route === '/diagnostics' && <Diagnostics />}
-      {(route === '/developer/brand-center' || route === '/branding') && <Branding />}
-      {route === '/labs/polarium' && <PolariumLab />}
-      {route === '/settings' && <Settings />}
-      {route === '/operation' && <Operation />}
-    </MainLayout>
+    <MarketDataProvider>
+      <MainLayout activeRoute={route} onNavigate={navigate}>
+        {route === '/connections/polarium' && <PolariumConnections />}
+        {route === '/markets' && <Markets />}
+        {route === '/markets/data' && <MarketData />}
+        {route === '/markets/intelligence' && <MarketIntelligence />}
+        {route === '/diagnostics' && <Diagnostics />}
+        {(route === '/developer/brand-center' || route === '/branding') && <Branding />}
+        {route === '/labs/polarium' && <PolariumLab />}
+        {route === '/settings' && <Settings />}
+        {route === '/operation' && <Operation />}
+      </MainLayout>
+    </MarketDataProvider>
   );
 }

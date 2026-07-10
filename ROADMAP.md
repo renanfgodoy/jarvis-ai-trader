@@ -26,6 +26,10 @@ Organizar ordens, replay e modo DEMO/DRY_RUN. Execucao real permanece bloqueada 
 
 Separar chamadas de API, estado remoto e regras de tela em hooks dedicados por dominio.
 
+## Sprint 8.1 - Market Data Engine
+
+Introduzir o Market Data Engine como fonte unica de contexto de mercado para ativo, timeframe, broker, ambiente, moeda, disponibilidade, origem dos dados e snapshot. Nenhum indicador, IA ou AutoTrade deve ser criado nesta etapa.
+
 ## Sprint 9 - Dashboard Modular
 
 Dividir o Dashboard em areas funcionais: Scanner, Chart, Orders, HUD, Replay, Settings, Assets, Balance, AI e Logs.

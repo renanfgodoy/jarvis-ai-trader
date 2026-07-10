@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import DiscoveryTimeline from '../components/intelligence/DiscoveryTimeline';
 import MarketDiscoveryStatus from '../components/intelligence/MarketDiscoveryStatus';
 import MarketReadinessCard from '../components/intelligence/MarketReadinessCard';
@@ -9,14 +8,14 @@ import PageTitle from '../components/PageTitle';
 import StatusBadge from '../components/StatusBadge';
 import { brand } from '../branding/brand';
 import { useMarketDiscovery } from '../intelligence/useMarketDiscovery';
-import type { Timeframe } from '../types/api';
+import { useMarketDataContext } from '../market-data/MarketDataContext';
+import type { MarketDataTimeframe } from '../market-data/types';
 
-const timeframes: Timeframe[] = ['M1', 'M5', 'M15'];
+const timeframes: MarketDataTimeframe[] = ['M1', 'M5', 'M15'];
 
 export default function MarketIntelligence() {
-  const [asset, setAsset] = useState('EURUSD-OTC');
-  const [timeframe, setTimeframe] = useState<Timeframe>('M1');
-  const discovery = useMarketDiscovery(asset, timeframe);
+  const marketContext = useMarketDataContext();
+  const discovery = useMarketDiscovery(marketContext.asset, marketContext.timeframe);
 
   return (
     <PageContainer>
@@ -34,17 +33,17 @@ export default function MarketIntelligence() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               className="login-input max-w-[220px]"
-              value={asset}
-              onChange={(event) => setAsset(event.target.value.toUpperCase())}
+              value={marketContext.asset}
+              onChange={(event) => marketContext.setAsset(event.target.value)}
               aria-label="Ativo observado"
             />
             {timeframes.map((item) => (
               <button
                 key={item}
                 type="button"
-                onClick={() => setTimeframe(item)}
+                onClick={() => marketContext.setTimeframe(item)}
                 className={`rounded-xl border px-4 py-2 text-xs font-black transition ${
-                  timeframe === item
+                  marketContext.timeframe === item
                     ? 'border-cyan-400/50 bg-cyan-400/20 text-cyan-200'
                     : 'border-white/10 bg-white/[0.035] text-slate-400 hover:bg-white/[0.06]'
                 }`}

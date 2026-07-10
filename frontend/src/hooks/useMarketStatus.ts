@@ -3,18 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { getCurrentProvider, getMarketAssets, getMarketIntelligenceTop, getPolariumStatus } from '../services/api';
 import type { Timeframe } from '../types/api';
 
-export type MarketWorkspaceTimeframe = Timeframe | 'H1';
+export type MarketWorkspaceTimeframe = Timeframe;
 
 export function useMarketStatus(selectedTimeframe: MarketWorkspaceTimeframe) {
-  const apiTimeframe: Timeframe | null = selectedTimeframe === 'H1' ? null : selectedTimeframe;
+  const apiTimeframe: Timeframe = selectedTimeframe;
   const marketAssets = useQuery({ queryKey: ['market-assets'], queryFn: getMarketAssets, refetchInterval: 10000 });
   const provider = useQuery({ queryKey: ['provider-current'], queryFn: getCurrentProvider, refetchInterval: 10000 });
   const polarium = useQuery({ queryKey: ['polarium-status'], queryFn: getPolariumStatus, refetchInterval: 10000 });
   const scanner = useQuery({
     queryKey: ['market-workspace-scanner', apiTimeframe],
-    queryFn: () => getMarketIntelligenceTop(apiTimeframe ?? 'M1'),
+    queryFn: () => getMarketIntelligenceTop(apiTimeframe),
     refetchInterval: 5000,
-    enabled: Boolean(apiTimeframe)
+    enabled: true
   });
 
   const lastUpdated = useMemo(() => new Date().toLocaleTimeString('pt-BR', {

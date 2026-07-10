@@ -19,10 +19,6 @@ export default function MarketScannerWidget({
   onSelectSymbol: (symbol: string) => void;
   loading: boolean;
 }) {
-  if (selectedTimeframe === 'H1') {
-    return <EmptyState title="H1 preparado para integração futura" message="O contrato atual do scanner suporta M1, M5 e M15. H1 permanece apenas visual nesta Sprint." />;
-  }
-
   if (loading && !scanner) return <Loading label="Carregando scanner de mercado" />;
 
   const assets: AssetScannerResult[] = (scanner?.results ?? []).map((asset, index) => ({

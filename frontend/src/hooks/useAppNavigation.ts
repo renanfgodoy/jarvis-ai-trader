@@ -4,6 +4,7 @@ export type AppRoute =
   | '/login'
   | '/operation'
   | '/markets'
+  | '/markets/data'
   | '/markets/intelligence'
   | '/connections/polarium'
   | '/diagnostics'
@@ -12,7 +13,7 @@ export type AppRoute =
   | '/labs/polarium'
   | '/settings';
 
-const routes: AppRoute[] = ['/login', '/operation', '/markets', '/markets/intelligence', '/connections/polarium', '/diagnostics', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
+const routes: AppRoute[] = ['/login', '/operation', '/markets', '/markets/data', '/markets/intelligence', '/connections/polarium', '/diagnostics', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
 
 function normalizePath(pathname: string): AppRoute {
   if (pathname === '/branding') return '/developer/brand-center';

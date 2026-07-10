@@ -1,4 +1,4 @@
-import { BadgeCheck, BrainCircuit, FlaskConical, Home, LineChart, PlugZap, Settings, Stethoscope } from 'lucide-react';
+import { BadgeCheck, BrainCircuit, DatabaseZap, FlaskConical, Home, LineChart, PlugZap, Settings, Stethoscope } from 'lucide-react';
 import { brand } from '../../branding/brand';
 import type { AppRoute } from '../../hooks/useAppNavigation';
 import BrandLogo from '../BrandLogo';
@@ -6,6 +6,7 @@ import BrandLogo from '../BrandLogo';
 const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementType; group?: string }> = [
   { route: '/operation', label: 'Operação', icon: Home },
   { route: '/markets', label: 'Markets', icon: LineChart },
+  { route: '/markets/data', label: 'Market Data', icon: DatabaseZap },
   { route: '/markets/intelligence', label: 'Market Intel', icon: BrainCircuit },
   { route: '/connections/polarium', label: 'Conexões', icon: PlugZap },
   { route: '/diagnostics', label: 'Diagnósticos', icon: Stethoscope },
