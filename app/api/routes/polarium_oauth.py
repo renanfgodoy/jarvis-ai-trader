@@ -9,7 +9,7 @@ from app.models.polarium_oauth import (
     PolariumPkceStartRequest,
     PolariumPkceStartResponse,
 )
-from app.services.polarium_oauth_lab import PolariumOAuthLabService
+from app.connector.polarium.oauth.lab import PolariumOAuthLabService
 
 router = APIRouter(prefix="/polarium/oauth", tags=["Polarium OAuth Lab"])
 

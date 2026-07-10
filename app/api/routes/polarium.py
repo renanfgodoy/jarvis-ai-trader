@@ -9,7 +9,7 @@ from app.models.polarium import (
     PolariumWsDebugRequest,
     PolariumWsDebugResponse,
 )
-from app.services.polarium_connector import PolariumConnectorService
+from app.connector.polarium.session.connector import PolariumConnectorService
 
 router = APIRouter(prefix="/polarium", tags=["Polarium Connector"])
 

@@ -6,7 +6,7 @@ from app.models.polarium_session_inspector import (
     HarInspectRequest,
     HarInspectResponse,
 )
-from app.services.polarium_session_inspector import PolariumSessionInspectorService
+from app.connector.polarium.diagnostics.session_inspector import PolariumSessionInspectorService
 
 router = APIRouter(prefix="/polarium/session-inspector", tags=["Polarium Session Inspector"])
 

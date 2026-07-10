@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.models.polarium_ws_recorder import WsFrameInput, WsRecorderConsoleSnippetResponse, WsRecordingResponse
-from app.services.polarium_ws_recorder import PolariumWsRecorderService
+from app.connector.polarium.websocket.recorder import PolariumWsRecorderService
 
 router = APIRouter(prefix="/polarium/ws-recorder", tags=["Polarium WS Session Recorder"])
 

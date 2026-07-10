@@ -27,6 +27,7 @@ app/
       session/
       websocket/
       parser/
+      execution/
       diagnostics/
   market/
     providers/
@@ -55,6 +56,20 @@ frontend/
 ```
 
 Esta e a arquitetura-alvo. A implementacao atual ainda possui parte dos dominios concentrada em `app/services` e em componentes maiores do frontend. As proximas sprints devem mover fronteiras de forma incremental, sem quebrar APIs e sem alterar comportamento sem necessidade.
+
+### Fronteira Polarium implementada na Sprint 3
+
+```text
+app/connector/polarium/
+  oauth/          OAuth, PKCE e token/session lab.
+  session/        Login seguro, cache de sessao e estado da conta.
+  websocket/      Gravacao e analise tecnica de frames WebSocket.
+  parser/         Parsers de payloads Polarium normalizados.
+  execution/      Fronteira reservada para transporte de execucao futura.
+  diagnostics/    Laboratorios e inspecoes tecnicas isoladas do fluxo operacional.
+```
+
+Os modulos antigos em `app/services/polarium_*` devem permanecer apenas como compatibilidade temporaria. Novos imports internos devem preferir `app.connector.polarium.*`.
 
 ## Fluxo operacional
 

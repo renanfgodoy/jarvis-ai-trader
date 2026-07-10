@@ -6,7 +6,7 @@ from app.models.polarium_direct import (
     PolariumDirectProbeResponse,
     PolariumDirectSessionState,
 )
-from app.services.polarium_direct_login_lab import PolariumDirectLoginLabService
+from app.connector.polarium.diagnostics.direct_login_lab import PolariumDirectLoginLabService
 
 router = APIRouter(prefix="/polarium/direct", tags=["Polarium Direct Login Lab"])
 

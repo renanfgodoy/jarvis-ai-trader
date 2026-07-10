@@ -1,0 +1,1 @@
+"""Polarium WebSocket boundary."""

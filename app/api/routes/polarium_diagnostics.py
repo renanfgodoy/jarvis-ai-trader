@@ -8,7 +8,7 @@ from app.models.polarium_diagnostics import (
     WebSocketDiagnosticRequest,
     WebSocketDiagnosticResponse,
 )
-from app.services.polarium_diagnostics import PolariumDiagnosticService
+from app.connector.polarium.diagnostics.service import PolariumDiagnosticService
 
 router = APIRouter(prefix="/polarium/diagnostics", tags=["Polarium Diagnostics"])
 
