@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ColorType, CrosshairMode, LineStyle, createChart, type IChartApi, type ISeriesApi, type UTCTimestamp } from 'lightweight-charts';
+import { classifyRealCandleSync } from './sync';
 
 export type RealChartCandle = {
   time: number;
@@ -29,6 +30,8 @@ export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const previousDataRef = useRef<ReturnType<typeof toChartData>>([]);
+  const hasFittedContentRef = useRef(false);
   const data = useMemo(() => toChartData(candles), [candles]);
 
   useEffect(() => {
@@ -100,9 +103,33 @@ export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
   }, []);
 
   useEffect(() => {
-    candleSeriesRef.current?.setData(data);
-    if (data.length) {
+    previousDataRef.current = [];
+    hasFittedContentRef.current = false;
+    candleSeriesRef.current?.setData([]);
+  }, [activeId, rawSize]);
+
+  useEffect(() => {
+    const candleSeries = candleSeriesRef.current;
+    if (!candleSeries) return;
+
+    const previousData = previousDataRef.current;
+    const syncAction = classifyRealCandleSync(previousData, data);
+
+    if (syncAction === 'unchanged') {
+      return;
+    }
+
+    if ((syncAction === 'append' || syncAction === 'update') && data.length) {
+      candleSeries.update(data[data.length - 1]);
+    } else {
+      candleSeries.setData(data);
+    }
+
+    previousDataRef.current = data;
+
+    if (data.length && !hasFittedContentRef.current) {
       chartRef.current?.timeScale().fitContent();
+      hasFittedContentRef.current = true;
     }
   }, [data]);
 

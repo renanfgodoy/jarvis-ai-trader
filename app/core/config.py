@@ -1,4 +1,9 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+AppEnvironment = Literal["development", "test", "production"]
 
 
 class Settings(BaseSettings):
@@ -6,7 +11,7 @@ class Settings(BaseSettings):
 
     app_name: str = "J.A.R.V.I.S AI TRADER"
     app_version: str = "0.24.0"
-    environment: str = "development"
+    environment: AppEnvironment = "development"
     api_prefix: str = "/api/v1"
 
     bankroll_base: float = 200.0
@@ -37,6 +42,10 @@ class Settings(BaseSettings):
     polarium_direct_ws_url: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def is_development_runtime_enabled(self) -> bool:
+        return self.environment in {"development", "test"}
 
 
 settings = Settings()

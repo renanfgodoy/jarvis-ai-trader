@@ -666,3 +666,25 @@ Resposta:
 - O frontend alterado foi somente `useRealCandles.ts`.
 - `app/market/runtime.py` centraliza a instância em memória usada pelo pipeline e pela Chart API.
 - O armazenamento é process-local: duas requisições HTTP no mesmo processo preservam a série; reload do backend recria o processo e limpa o Store, comportamento esperado para esta fase em memória.
+
+## Sprint V3.6 — Controlled Market Runtime
+
+Foi criado o primeiro runtime controlado de desenvolvimento para alimentar o Market Pipeline com mensagens sanitizadas.
+
+### Escopo implementado
+
+- `app/market/runtime_feed.py` valida mensagens sanitizadas e encaminha para o `MarketPipeline` compartilhado.
+- `app/api/routes/runtime_feed.py` expõe `POST /api/v1/runtime/feed`.
+- O endpoint retorna o relatório do pipeline sem abrir WebSocket, sem Connector e sem comunicação externa.
+
+### Segurança
+
+O endpoint rejeita HAR bruto, headers, cookies, Authorization, Bearer, tokens, SSID, senhas e credenciais. Ele é explicitamente Development Runtime Only.
+
+### Fluxo validado
+
+Mensagem sanitizada -> Runtime Feed -> Market Pipeline -> Candle Store -> Chart API -> Real Candle Chart.
+
+### Limitação
+
+O runtime é process-local e em memória. Reload do backend limpa o Store, comportamento esperado nesta etapa.

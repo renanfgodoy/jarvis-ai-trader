@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { RealChartCandle } from '../components/chart/RealCandleChart';
+import { reconcileRealCandleSeries } from '../components/chart/RealCandleChart/sync';
 
 type RealCandleSeries = {
   activeId: number;
@@ -21,6 +22,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000
 const DEFAULT_ACTIVE_ID = 76;
 const DEFAULT_RAW_SIZE = 60;
 const DEFAULT_LIMIT = 200;
+const SYNC_INTERVAL_MS = 1500;
 
 export function useRealCandles(): RealCandleSeries {
   const [candles, setCandles] = useState<RealChartCandle[]>([]);
@@ -29,6 +31,9 @@ export function useRealCandles(): RealCandleSeries {
 
   useEffect(() => {
     const controller = new AbortController();
+    let isMounted = true;
+    let isFirstLoad = true;
+    let isRequestInFlight = false;
     const params = new URLSearchParams({
       active_id: String(DEFAULT_ACTIVE_ID),
       raw_size: String(DEFAULT_RAW_SIZE),
@@ -36,8 +41,11 @@ export function useRealCandles(): RealCandleSeries {
     });
 
     async function loadCandles() {
-      setIsLoading(true);
-      setError(null);
+      if (isRequestInFlight) return;
+      isRequestInFlight = true;
+      if (isFirstLoad) {
+        setIsLoading(true);
+      }
       try {
         const response = await fetch(`${API_BASE_URL}/market/chart?${params.toString()}`, {
           signal: controller.signal
@@ -46,20 +54,35 @@ export function useRealCandles(): RealCandleSeries {
           throw new Error(`Market chart API returned ${response.status}`);
         }
         const payload = (await response.json()) as MarketChartResponse;
-        setCandles(payload.candles);
+        if (!isMounted) return;
+        setError(null);
+        setCandles((previousCandles) => {
+          const { candles: updatedCandles } = reconcileRealCandleSeries(previousCandles, payload.candles);
+          return Object.is(updatedCandles, previousCandles) ? previousCandles : updatedCandles;
+        });
       } catch (requestError) {
         if (controller.signal.aborted) return;
-        setCandles([]);
+        if (!isMounted) return;
         setError(requestError instanceof Error ? requestError.message : 'Falha ao carregar candles');
       } finally {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && isMounted && isFirstLoad) {
           setIsLoading(false);
+          isFirstLoad = false;
         }
+        isRequestInFlight = false;
       }
     }
 
     void loadCandles();
-    return () => controller.abort();
+    const syncTimer = window.setInterval(() => {
+      void loadCandles();
+    }, SYNC_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(syncTimer);
+      controller.abort();
+    };
   }, []);
 
   return {

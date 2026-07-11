@@ -1,12 +1,14 @@
 from fastapi import APIRouter
 
-from app.api.routes import ai, execution, health, intelligence, live, market, market_chart, polarium, polarium_diagnostics, polarium_direct, polarium_oauth, polarium_session_inspector, polarium_ws_recorder, providers, quadcode, risk, scanner, signal, system
+from app.api.routes import ai, execution, health, intelligence, live, market, market_chart, polarium, polarium_diagnostics, polarium_direct, polarium_oauth, polarium_session_inspector, polarium_ws_recorder, providers, quadcode, risk, runtime_feed, runtime_simulator, scanner, signal, system
 
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(system.router)
 api_router.include_router(market.router)
 api_router.include_router(market_chart.router)
+api_router.include_router(runtime_feed.router)
+api_router.include_router(runtime_simulator.router)
 api_router.include_router(ai.router)
 api_router.include_router(risk.router)
 api_router.include_router(providers.router)
