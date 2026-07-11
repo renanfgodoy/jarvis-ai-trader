@@ -6,6 +6,7 @@ import BrandLogo from '../BrandLogo';
 const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementType; group?: string }> = [
   { route: '/dashboard', label: 'Dashboard', icon: Home },
   { route: '/markets', label: 'Markets', icon: LineChart },
+  { route: '/market-chart', label: 'Real Chart', icon: LineChart },
   { route: '/analysis', label: 'AI Analysis', icon: BrainCircuit },
   { route: '/replay', label: 'Replay', icon: History },
   { route: '/connections/polarium', label: 'Connections', icon: PlugZap },

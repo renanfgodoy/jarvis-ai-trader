@@ -5,6 +5,7 @@ import PolariumConnections from './pages/connections/PolariumConnections';
 import Login from './pages/Login';
 import AIAnalysis from './pages/AIAnalysis';
 import Markets from './pages/Markets';
+import MarketChart from './pages/MarketChart';
 import Operation from './pages/Operation';
 import PolariumLab from './pages/labs/PolariumLab';
 import Replay from './pages/Replay';
@@ -38,6 +39,7 @@ export default function App() {
         {route === '/connections/polarium' && <PolariumConnections />}
         {route === '/dashboard' && <Operation />}
         {route === '/markets' && <Markets />}
+        {route === '/market-chart' && <MarketChart />}
         {route === '/analysis' && <AIAnalysis />}
         {route === '/replay' && <Replay />}
         {(route === '/developer/brand-center' || route === '/branding') && <Branding />}

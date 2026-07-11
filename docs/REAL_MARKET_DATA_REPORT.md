@@ -608,3 +608,26 @@ Foi criada a fundação passiva do Indicator Engine para executar indicadores re
 ### Fora do runtime
 
 O Indicator Engine ainda não roda automaticamente. Ele depende de um `CandleStore` já preenchido por fluxos passivos e de indicadores explicitamente registrados.
+
+## Sprint V3.4 — Real Candle Chart Foundation
+
+Foi criada a primeira fundação de renderização nativa de candles reais do Friday Trade.
+
+### Escopo implementado
+
+- `app/market/chart/` transforma candles do `CandleStore` em contrato de gráfico.
+- `frontend/src/components/chart/RealCandleChart/` renderiza candles com TradingView Lightweight Charts.
+- `frontend/src/hooks/useRealCandles.ts` expõe um snapshot sanitizado compatível com o contrato do Candle Store enquanto não existe runtime/API.
+- `frontend/src/pages/MarketChart.tsx` cria a tela `/market-chart`.
+
+### Garantias preservadas
+
+- Nenhum WebSocket é aberto.
+- Nenhum Connector, Provider ou API existente é alterado.
+- Nenhum iframe, screenshot ou espelhamento da Polarium é usado.
+- Nenhum indicador, IA, replay, signal engine ou AutoTrade é criado.
+- O gráfico não inventa `symbol`, M1, M5 ou M15.
+
+### Limitação atual
+
+A renderização frontend ainda usa um snapshot sanitizado derivado das evidências documentadas. A ligação runtime entre backend `CandleStore` e frontend chart deve ser feita somente em Sprint futura com API/controlador próprio.
