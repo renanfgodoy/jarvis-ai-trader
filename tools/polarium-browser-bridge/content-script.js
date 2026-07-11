@@ -1,102 +1,94 @@
 (() => {
-  const JARVIS_ENDPOINT = 'http://127.0.0.1:8000/api/v1/polarium/live/bridge-message';
-  const RELEVANT_EVENTS = new Set([
-    'marginal-balance',
-    'balances',
-    'subscription-balance-changed',
-    'candle-generated',
-    'digital-option-client-price-generated'
-  ]);
+  const PAGE_EVENT_SOURCE = 'FRIDAY_TRADE_POLARIUM_BRIDGE_PAGE';
+  const EXTENSION_EVENT_SOURCE = 'FRIDAY_TRADE_POLARIUM_BRIDGE_CONTENT';
+  const status = {
+    bridge_active: true,
+    relay_active: true,
+    received_count: 0,
+    accepted_count: 0,
+    rejected_count: 0,
+    last_event_name: null,
+    last_error_code: null
+  };
 
-  function parseJsonCandidate(data) {
-    if (typeof data !== 'string') return null;
-    const trimmed = data.trim();
-    if (!trimmed) return null;
-
-    const attempts = [trimmed];
-    const firstBrace = trimmed.indexOf('{');
-    const lastBrace = trimmed.lastIndexOf('}');
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      attempts.push(trimmed.slice(firstBrace, lastBrace + 1));
-    }
-
-    for (const item of attempts) {
-      try {
-        return JSON.parse(item);
-      } catch (_) {
-        // keep trying
-      }
-    }
-    return null;
+  function isBridgeMessage(event) {
+    return event.source === window && event.data && event.data.source === PAGE_EVENT_SOURCE && event.data.type === 'MARKET_EVENT';
   }
 
-  function normalizePayload(value) {
-    if (!value) return null;
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const candidate = normalizePayload(item);
-        if (candidate) return candidate;
-      }
-      return null;
-    }
-    if (typeof value !== 'object') return null;
-
-    const name = value.name || value.event || value.type;
-    if (name && RELEVANT_EVENTS.has(String(name))) return value;
-
-    // Some WS protocols wrap the payload inside msg/body/data.
-    for (const key of ['msg', 'body', 'data', 'payload']) {
-      if (value[key]) {
-        const candidate = normalizePayload(value[key]);
-        if (candidate) return candidate;
-      }
-    }
-    return null;
+  function runtimeMessagingAvailable() {
+    return (
+      typeof chrome !== 'undefined' &&
+      chrome.runtime &&
+      chrome.runtime.id &&
+      typeof chrome.runtime.sendMessage === 'function'
+    );
   }
 
-  async function forwardToJarvis(payload) {
+  function markExtensionContextInvalidated() {
+    status.rejected_count += 1;
+    status.relay_active = false;
+    status.last_error_code = 'EXTENSION_CONTEXT_INVALIDATED';
+  }
+
+  function forwardToBackground(payload) {
+    if (!status.relay_active) {
+      status.rejected_count += 1;
+      status.last_error_code = 'EXTENSION_CONTEXT_INVALIDATED';
+      return;
+    }
+    if (!runtimeMessagingAvailable()) {
+      markExtensionContextInvalidated();
+      return;
+    }
+
     try {
-      await fetch(JARVIS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payload,
-          force_demo: true,
-          source: 'POLARIUM_BROWSER_BRIDGE'
-        })
+      chrome.runtime.sendMessage({ source: EXTENSION_EVENT_SOURCE, type: 'FORWARD_MARKET_EVENT', payload }, (response) => {
+        if (chrome.runtime.lastError) {
+          const errorMessage = String(chrome.runtime.lastError.message || '');
+          if (errorMessage.includes('Extension context invalidated')) {
+            markExtensionContextInvalidated();
+            return;
+          }
+          status.rejected_count += 1;
+          status.last_error_code = 'FORWARD_FAILED';
+          return;
+        }
+        if (!response || response.ok !== true) {
+          status.rejected_count += 1;
+          status.last_error_code = response?.error || 'FORWARD_FAILED';
+          return;
+        }
+        status.accepted_count += 1;
+        status.last_error_code = null;
       });
     } catch (error) {
-      // Silent by design: if J.A.R.V.I.S backend is offline, Polarium must keep working.
+      const errorMessage = String(error && error.message ? error.message : error);
+      if (errorMessage.includes('Extension context invalidated')) {
+        markExtensionContextInvalidated();
+        return;
+      }
+      status.rejected_count += 1;
+      status.last_error_code = 'FORWARD_FAILED';
     }
   }
 
-  const NativeWebSocket = window.WebSocket;
-  if (!NativeWebSocket || NativeWebSocket.__jarvisPatched) return;
+  window.addEventListener('message', (event) => {
+    if (!isBridgeMessage(event)) return;
+    status.received_count += 1;
+    const payload = event.data.payload;
+    if (!payload || typeof payload !== 'object') {
+      status.rejected_count += 1;
+      status.last_error_code = 'INVALID_PAGE_MESSAGE';
+      return;
+    }
 
-  function JarvisWebSocket(url, protocols) {
-    const socket = protocols ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
-
-    socket.addEventListener('message', (event) => {
-      const parsed = parseJsonCandidate(event.data);
-      const payload = normalizePayload(parsed);
-      if (payload) forwardToJarvis(payload);
-    });
-
-    return socket;
-  }
-
-  JarvisWebSocket.prototype = NativeWebSocket.prototype;
-  JarvisWebSocket.CONNECTING = NativeWebSocket.CONNECTING;
-  JarvisWebSocket.OPEN = NativeWebSocket.OPEN;
-  JarvisWebSocket.CLOSING = NativeWebSocket.CLOSING;
-  JarvisWebSocket.CLOSED = NativeWebSocket.CLOSED;
-  JarvisWebSocket.__jarvisPatched = true;
-
-  Object.defineProperty(window, 'WebSocket', {
-    configurable: true,
-    writable: true,
-    value: JarvisWebSocket
+    status.last_event_name = payload.event_name || null;
+    forwardToBackground(payload);
   });
 
-  window.postMessage({ source: 'JARVIS_POLARIUM_BRIDGE', status: 'INSTALLED' }, '*');
+  window.__FRIDAY_TRADE_POLARIUM_BRIDGE_CONTENT__ = {
+    status() {
+      return { ...status };
+    }
+  };
 })();

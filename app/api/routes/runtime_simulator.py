@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.market.runtime import controlled_candle_stream_simulator
+from app.market.runtime import authorized_browser_bridge_runtime, controlled_candle_stream_simulator
 from app.market.runtime_simulator import ControlledCandleSimulatorConfig, ControlledCandleSimulatorStatus
 
 router = APIRouter(prefix="/runtime/simulator", tags=["Development Runtime"])
@@ -25,6 +25,8 @@ def start_controlled_candle_simulator(request: StartControlledCandleSimulatorReq
     """Development-only controlled simulated candle stream."""
 
     _ensure_development_runtime()
+    if authorized_browser_bridge_runtime.is_active:
+        raise HTTPException(status_code=409, detail="Authorized Browser Bridge is active. Stop/reset real live data before starting the simulator.")
     payload = request or StartControlledCandleSimulatorRequest()
     status = controlled_candle_stream_simulator.start(
         ControlledCandleSimulatorConfig(
