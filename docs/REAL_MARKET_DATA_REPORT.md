@@ -558,3 +558,29 @@ Foi criada a primeira base passiva do Candle Store em memória para armazenar ca
 ### Fora do runtime
 
 O Candle Store não conecta na Polarium, não abre WebSocket, não altera Connector, não cria API, não altera frontend e não calcula indicadores.
+
+## Sprint V3.2 — Market Pipeline Foundation
+
+Foi criado o primeiro pipeline passivo para conectar o Market Event Engine ao Candle Store.
+
+### Fluxo implementado
+
+Mensagem sanitizada `dict` -> `route_market_event` -> candles normalizados -> `CandleStore` -> `PipelineResult`.
+
+### Escopo implementado
+
+- `app/market/pipeline/models.py` define o contrato `PipelineResult`.
+- `app/market/pipeline/processor.py` coordena Router, Parser e Candle Store.
+- `app/market/pipeline/pipeline.py` expõe uma fachada simples para processamento passivo.
+
+### Garantias preservadas
+
+- O pipeline não abre WebSocket.
+- O pipeline não chama Connector, Provider ou API.
+- O pipeline não altera frontend.
+- O pipeline não cria indicadores, IA, sinais ou execução.
+- `symbol`, `timeframe` e `mapping_verified` são preservados conforme os candles normalizados.
+
+### Resultado
+
+Eventos `candle-generated` e `first-candles` podem ser processados e armazenados em memória. Eventos desconhecidos ou inválidos retornam relatório controlado sem derrubar o fluxo.
