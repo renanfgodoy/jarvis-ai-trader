@@ -631,3 +631,38 @@ Foi criada a primeira fundação de renderização nativa de candles reais do Fr
 ### Limitação atual
 
 A renderização frontend ainda usa um snapshot sanitizado derivado das evidências documentadas. A ligação runtime entre backend `CandleStore` e frontend chart deve ser feita somente em Sprint futura com API/controlador próprio.
+
+## Sprint V3.5 — Candle Store Read-Only API
+
+Foi criada a primeira API interna read-only para expor séries do `CandleStore` ao gráfico nativo.
+
+### Escopo implementado
+
+- `app/api/routes/market_chart.py` expõe `GET /api/v1/market/chart`.
+- `app/market/chart/runtime_service.py` consulta o `CandleStore` existente e reutiliza `CandleChartService`.
+- `frontend/src/hooks/useRealCandles.ts` deixou de usar snapshot local e passou a consumir a Chart API.
+
+### Contrato
+
+Parâmetros:
+
+- `active_id`
+- `raw_size`
+- `limit`
+
+Resposta:
+
+- `active_id`
+- `raw_size`
+- `count`
+- `candles[]` com `time`, `open`, `high`, `low` e `close`
+
+### Garantias preservadas
+
+- A API é somente leitura.
+- Nenhum WebSocket é aberto.
+- Nenhum Connector ou Provider é alterado.
+- Nenhuma API existente é modificada.
+- O frontend alterado foi somente `useRealCandles.ts`.
+- `app/market/runtime.py` centraliza a instância em memória usada pelo pipeline e pela Chart API.
+- O armazenamento é process-local: duas requisições HTTP no mesmo processo preservam a série; reload do backend recria o processo e limpa o Store, comportamento esperado para esta fase em memória.
