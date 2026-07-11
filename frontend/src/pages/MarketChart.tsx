@@ -16,11 +16,20 @@ export default function MarketChart() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <Metric label="Origem" value={series.source} />
-        <Metric label="Active ID" value={String(series.activeId)} />
-        <Metric label="Raw Size" value={String(series.rawSize)} />
+        <Metric label="Active ID" value={series.activeId ? String(series.activeId) : 'Não disponível'} />
+        <Metric label="Raw Size" value={series.rawSize ? String(series.rawSize) : 'Não disponível'} />
       </div>
 
-      <RealCandleChart activeId={series.activeId} rawSize={series.rawSize} candles={series.candles} />
+      {series.activeId && series.rawSize ? (
+        <RealCandleChart activeId={series.activeId} rawSize={series.rawSize} candles={series.candles} />
+      ) : (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-8 text-center">
+          <p className="text-sm font-black text-white">Aguardando série ativa do Browser Bridge.</p>
+          <p className="mt-2 text-xs text-slate-400">
+            O gráfico será carregado quando active_id e raw_size existirem no fluxo oficial.
+          </p>
+        </div>
+      )}
     </PageContainer>
   );
 }
