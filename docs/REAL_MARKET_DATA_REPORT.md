@@ -688,3 +688,23 @@ Mensagem sanitizada -> Runtime Feed -> Market Pipeline -> Candle Store -> Chart 
 ### Limitação
 
 O runtime é process-local e em memória. Reload do backend limpa o Store, comportamento esperado nesta etapa.
+
+## Sprint V3.8C — Verified WebSocket Handshake Evidence
+
+Foi documentada a sequência sanitizada do WebSocket autorizado da Polarium com base exclusivamente no HAR local autorizado e ignorado pelo Git.
+
+### Evidência documentada
+
+- URL WebSocket confirmada: `wss://ws.trade.polariumbroker.com/echo/websocket`.
+- Handshake HTTP 101 confirmado.
+- Sequência confirmada: `authenticate`, `authenticated`, `timeSync`, `sendMessage/get-first-candles`, `first-candles`, `subscribeMessage/candle-generated` e `candle-generated`.
+- Heartbeat explícito permanece parcial: `timeSync` é periódico, mas não foi observado evento chamado `heartbeat`.
+- Encerramento permanece não confirmado: não foi observado frame de fechamento suficiente para definir lifecycle.
+
+### Decisão arquitetural
+
+O acesso autenticado depende de material sensível de sessão no evento `authenticate`. Portanto, nenhum `AuthenticatedWebSocketFactory` deve ser implementado diretamente a partir do HAR. A próxima arquitetura segura precisa isolar esse material em uma camada interna não serializável e entregar ao Message Source apenas um stream já autenticado e sanitizado.
+
+Documento técnico:
+
+- `docs/ws/POLARIUM_WEBSOCKET_HANDSHAKE_SANITIZED.md`

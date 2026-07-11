@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from app.connector.polarium.live_session.binding import AuthenticatedSessionBinding
 from app.connector.polarium.live_session.models import AuthorizedSessionSnapshot
 from app.connector.polarium.live_session.sources.errors import AuthorizedSourceUnavailableError
 from app.connector.polarium.live_session.sources.models import MessageSourceAuthorization
@@ -50,8 +51,13 @@ class StaticAuthorizationProbe:
 class AuthorizedPolariumMessageSource:
     """Blocked concrete source until the real WS auth sequence is proven."""
 
-    def __init__(self, authorization_probe: AuthorizationProbe | None = None) -> None:
+    def __init__(
+        self,
+        authorization_probe: AuthorizationProbe | None = None,
+        session_binding: AuthenticatedSessionBinding | None = None,
+    ) -> None:
         self._authorization_probe = authorization_probe or OAuthLabAuthorizationProbe()
+        self._session_binding = session_binding
         self._connected = False
 
     def authorization_status(self) -> AuthorizedSessionSnapshot:
@@ -63,12 +69,20 @@ class AuthorizedPolariumMessageSource:
                 reason=authorization.reason,
             )
 
+        if self._session_binding is not None:
+            binding_status = self._session_binding.status()
+            if not binding_status.available:
+                return AuthorizedSessionSnapshot(
+                    authorized=False,
+                    status=binding_status.error_code or "AUTHORIZED_SESSION_UNAVAILABLE",
+                    reason=binding_status.reason,
+                )
+
         return AuthorizedSessionSnapshot(
             authorized=False,
             status="AUTHORIZED_SOURCE_UNAVAILABLE",
             reason=(
-                "A sanitized authorization signal exists, but the real Polarium WebSocket URL, "
-                "authentication handshake, and safe session-to-socket factory are not proven. "
+                "A sanitized safe session signal exists, but live message transport remains intentionally blocked. "
                 "No connection will be opened from this adapter."
             ),
         )
