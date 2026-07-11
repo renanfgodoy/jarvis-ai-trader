@@ -535,3 +535,26 @@ Foi criado o primeiro núcleo passivo para rotear e normalizar mensagens de merc
 ### Fora do runtime
 
 O engine não conecta na Polarium, não altera Connector, não altera APIs, não cria endpoint, não executa ordens e não produz sinais. Ele é uma camada testável para receber payloads já sanitizados.
+
+## Sprint V3.1 — Candle Store Foundation
+
+Foi criada a primeira base passiva do Candle Store em memória para armazenar candles normalizados pelo Market Event Engine.
+
+### Escopo implementado
+
+- `app/market/store/types.py` define a chave de série e o resultado de escrita.
+- `app/market/store/repository.py` mantém séries em memória, sem arquivo, banco ou rede.
+- `app/market/store/candle_store.py` oferece escrita, atualização, consulta por série, consulta dos últimos N candles e limpeza em memória.
+
+### Regras preservadas
+
+- A chave de armazenamento usa `active_id` e `raw_size`.
+- A ordenação usa `start_timestamp`.
+- Candles idênticos no mesmo timestamp são ignorados.
+- Candles diferentes no mesmo timestamp atualizam o item existente.
+- O limite por série mantém os candles mais recentes.
+- `symbol`, `timeframe` e `mapping_verified` são preservados exatamente como chegam do Market Event Engine.
+
+### Fora do runtime
+
+O Candle Store não conecta na Polarium, não abre WebSocket, não altera Connector, não cria API, não altera frontend e não calcula indicadores.
