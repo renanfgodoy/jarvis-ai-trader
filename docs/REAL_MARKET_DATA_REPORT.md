@@ -584,3 +584,27 @@ Mensagem sanitizada `dict` -> `route_market_event` -> candles normalizados -> `C
 ### Resultado
 
 Eventos `candle-generated` e `first-candles` podem ser processados e armazenados em memória. Eventos desconhecidos ou inválidos retornam relatório controlado sem derrubar o fluxo.
+
+## Sprint V3.3 — Indicator Engine Foundation
+
+Foi criada a fundação passiva do Indicator Engine para executar indicadores registrados sobre candles normalizados já armazenados no Candle Store.
+
+### Escopo implementado
+
+- `app/indicators/base.py` define o contrato base para indicadores.
+- `app/indicators/registry.py` registra e resolve indicadores por nome.
+- `app/indicators/engine.py` executa indicadores registrados usando séries do `CandleStore`.
+- `app/indicators/models.py` define `IndicatorRequest`, `IndicatorValue` e `IndicatorResult`.
+- `app/indicators/errors.py` centraliza erros do engine e registry.
+
+### Garantias preservadas
+
+- Nenhum WebSocket é aberto.
+- Nenhum Connector, Provider, API ou frontend é alterado.
+- Nenhum indicador real novo foi implementado nesta Sprint.
+- O indicador usado nos testes é interno aos testes e serve apenas para validar o fluxo do engine.
+- `symbol`, `timeframe` e `mapping_verified` continuam preservados conforme os candles do Store.
+
+### Fora do runtime
+
+O Indicator Engine ainda não roda automaticamente. Ele depende de um `CandleStore` já preenchido por fluxos passivos e de indicadores explicitamente registrados.
