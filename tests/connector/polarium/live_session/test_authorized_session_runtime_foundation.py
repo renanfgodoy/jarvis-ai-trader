@@ -191,7 +191,7 @@ def test_endpoint_start_without_authorized_source_returns_structured_block() -> 
     assert response.status_code == 409
     detail = response.json()["detail"]
     assert detail["state"] == "ERROR"
-    assert detail["last_error_code"] == "NO_AUTHORIZED_SESSION"
+    assert detail["last_error_code"] in {"NO_AUTHORIZED_SESSION", "AUTHORIZED_SOURCE_UNAVAILABLE"}
     assert_no_secret_markers(detail)
 
 

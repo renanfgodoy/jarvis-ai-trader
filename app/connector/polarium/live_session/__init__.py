@@ -8,12 +8,15 @@ from app.connector.polarium.live_session.models import (
     LiveSessionState,
     LiveSessionStatus,
 )
+from app.connector.polarium.live_session.sources import AuthorizedPolariumMessageSource, PolariumMessageSource
 
 __all__ = [
     "AuthorizedSessionSnapshot",
+    "AuthorizedPolariumMessageSource",
     "LiveSessionMessage",
     "LiveSessionState",
     "LiveSessionStatus",
+    "PolariumMessageSource",
     "PolariumLiveSessionEventBus",
     "PolariumLiveSessionManager",
     "UnavailablePolariumLiveMessageSource",
