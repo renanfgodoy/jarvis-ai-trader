@@ -20,6 +20,10 @@ Esta Sprint NÃO altera CandleStore.
 
 Esta Sprint NÃO altera MarketPipeline.
 
+Esta Sprint NÃO altera OAuth.
+
+Esta Sprint NÃO altera Connector.
+
 Esta Sprint existe apenas para responder tecnicamente:
 
 "Existe hoje alguma sessão WebSocket autenticada viva que possa ser reutilizada?"
@@ -33,8 +37,8 @@ Ao final deverá existir apenas um diagnóstico técnico contendo:
 - todos os componentes relacionados ao WebSocket;
 - quem cria cada conexão;
 - quem fecha;
-- quem consome;
 - lifecycle;
+- quem consome;
 - possibilidade de reutilização;
 - conclusão arquitetural.
 
