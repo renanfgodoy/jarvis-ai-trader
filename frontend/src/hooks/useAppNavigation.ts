@@ -14,12 +14,13 @@ export type AppRoute =
   | '/labs/polarium'
   | '/settings';
 
-const routes: AppRoute[] = ['/login', '/dashboard', '/operation', '/markets', '/market-chart', '/analysis', '/replay', '/connections/polarium', '/branding', '/developer/brand-center', '/labs/polarium', '/settings'];
+const routes: AppRoute[] = ['/login', '/dashboard', '/operation', '/markets', '/market-chart', '/analysis', '/replay', '/branding', '/developer/brand-center', '/settings'];
 
 function normalizePath(pathname: string): AppRoute {
   if (pathname === '/branding') return '/developer/brand-center';
   if (pathname === '/markets/data' || pathname === '/markets/intelligence') return '/markets';
   if (pathname === '/diagnostics') return '/dashboard';
+  if (pathname === '/connections/polarium' || pathname === '/labs/polarium') return '/dashboard';
   if (pathname === '/' || pathname === '/operation') return '/dashboard';
   return routes.includes(pathname as AppRoute) ? (pathname as AppRoute) : '/dashboard';
 }

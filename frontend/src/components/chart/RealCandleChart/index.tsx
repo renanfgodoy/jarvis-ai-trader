@@ -11,9 +11,12 @@ export type RealChartCandle = {
 };
 
 type Props = {
-  activeId: number;
+  activeId: number | null;
+  symbol?: string | null;
   rawSize: number;
   candles: RealChartCandle[];
+  chartClassName?: string;
+  compact?: boolean;
 };
 
 function toChartData(candles: RealChartCandle[]) {
@@ -26,7 +29,7 @@ function toChartData(candles: RealChartCandle[]) {
   }));
 }
 
-export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
+export default function RealCandleChart({ activeId, symbol, rawSize, candles, chartClassName = 'h-[620px]', compact = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -106,7 +109,7 @@ export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
     previousDataRef.current = [];
     hasFittedContentRef.current = false;
     candleSeriesRef.current?.setData([]);
-  }, [activeId, rawSize]);
+  }, [activeId, rawSize, symbol]);
 
   useEffect(() => {
     const candleSeries = candleSeriesRef.current;
@@ -135,23 +138,22 @@ export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-[#070920] shadow-[0_0_70px_rgba(34,211,238,0.10)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+      <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-white/10 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Candle Store</p>
-          <h2 className="mt-1 text-lg font-black text-white">active_id {activeId} · raw_size {rawSize}</h2>
+          <h2 className={`${compact ? 'text-sm' : 'text-lg'} font-black text-white`}>{symbol ?? 'Ativo não identificado'} · {formatRawSize(rawSize)}</h2>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-right">
+        <div className={`rounded-xl border border-white/10 bg-white/[0.035] px-3 ${compact ? 'py-1.5' : 'py-2'} text-right`}>
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Candles</p>
           <p className="text-sm font-black text-cyan-200">{candles.length}</p>
         </div>
       </div>
-      <div className="relative h-[620px]">
+      <div className={`relative ${chartClassName}`}>
         {!candles.length && (
           <div className="absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
             <div>
               <p className="text-sm font-black text-white">Nenhum candle disponível no snapshot atual.</p>
               <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-400">
-                A fundação do gráfico está pronta para consumir séries do Candle Store assim que o runtime controlado existir.
+                Não foi possível atualizar este ativo.
               </p>
             </div>
           </div>
@@ -160,4 +162,11 @@ export default function RealCandleChart({ activeId, rawSize, candles }: Props) {
       </div>
     </section>
   );
+}
+
+function formatRawSize(rawSize: number) {
+  if (rawSize === 60) return 'M1';
+  if (rawSize === 300) return 'M5';
+  if (rawSize === 900) return 'M15';
+  return `${rawSize}s`;
 }

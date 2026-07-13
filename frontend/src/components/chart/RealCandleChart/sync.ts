@@ -56,11 +56,44 @@ export function classifyRealCandleSync<TCandle extends ComparableCandle>(
 
 export function reconcileRealCandleSeries<TCandle extends ComparableCandle>(
   previous: TCandle[],
-  next: TCandle[]
+  next: TCandle[],
+  limit?: number
 ): RealCandleSyncResult<TCandle> {
-  const action = classifyRealCandleSync(previous, next);
+  const candles = mergeCandlesByTime(previous, next, limit);
+  const action = classifyRealCandleSync(previous, candles);
   return {
     action,
-    candles: action === 'unchanged' ? previous : next
+    candles: action === 'unchanged' ? previous : candles
   };
+}
+
+export function mergeCandlesByTime<TCandle extends ComparableCandle>(
+  previous: TCandle[],
+  next: TCandle[],
+  limit?: number
+): TCandle[] {
+  if (!previous.length && !next.length) {
+    return previous;
+  }
+  if (!next.length) {
+    return trimToLatest(previous, limit);
+  }
+
+  const mergedByTime = new Map<number, TCandle>();
+  for (const candle of previous) {
+    mergedByTime.set(candle.time, candle);
+  }
+  for (const candle of next) {
+    mergedByTime.set(candle.time, candle);
+  }
+
+  const merged = Array.from(mergedByTime.values()).sort((left, right) => left.time - right.time);
+  return trimToLatest(merged, limit);
+}
+
+function trimToLatest<TCandle extends ComparableCandle>(candles: TCandle[], limit?: number): TCandle[] {
+  if (typeof limit !== 'number' || limit <= 0 || candles.length <= limit) {
+    return candles;
+  }
+  return candles.slice(candles.length - limit);
 }

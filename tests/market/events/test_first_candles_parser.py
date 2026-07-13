@@ -34,6 +34,33 @@ def first_candles_payload() -> dict:
     }
 
 
+def first_candles_list_payload(count: int = 100, *, active_id: int = 76, raw_size: int = 60) -> dict:
+    start = 1_783_720_000
+    return {
+        "request_id": "bootstrap-1",
+        "name": "first-candles",
+        "status": 2000,
+        "msg": {
+            "body": {
+                "candles": [
+                    {
+                        "active_id": active_id,
+                        "size": raw_size,
+                        "from": start + index * raw_size,
+                        "to": start + (index + 1) * raw_size,
+                        "open": 1.1000 + index / 10000,
+                        "close": 1.1005 + index / 10000,
+                        "min": 1.0995 + index / 10000,
+                        "max": 1.1010 + index / 10000,
+                        "volume": 0,
+                    }
+                    for index in range(count)
+                ]
+            }
+        },
+    }
+
+
 def test_first_candles_valid_collection_is_normalized() -> None:
     result = route_market_event(first_candles_payload())
 
@@ -78,3 +105,75 @@ def test_first_candles_does_not_invent_active_id_when_absent() -> None:
 
     assert result.status == "parsed"
     assert all(candle.active_id is None for candle in result.candles)
+
+
+def test_first_candles_list_with_100_items_is_normalized() -> None:
+    result = route_market_event(first_candles_list_payload(100))
+
+    assert result.status == "parsed"
+    assert len(result.candles) == 100
+    assert result.candles[0].start_timestamp == 1_783_720_000
+    assert result.candles[-1].start_timestamp == 1_783_725_940
+    assert all(candle.active_id == 76 for candle in result.candles)
+    assert all(candle.raw_size == 60 for candle in result.candles)
+    assert all(candle.symbol is None for candle in result.candles)
+    assert all(candle.timeframe is None for candle in result.candles)
+    assert all(candle.mapping_verified is False for candle in result.candles)
+
+
+def test_first_candles_list_with_200_items_is_normalized() -> None:
+    result = route_market_event(first_candles_list_payload(200))
+
+    assert result.status == "parsed"
+    assert len(result.candles) == 200
+    assert result.candles[-1].start_timestamp == 1_783_731_940
+
+
+def test_first_candles_list_with_one_invalid_item_keeps_valid_history() -> None:
+    payload = first_candles_list_payload(3)
+    del payload["msg"]["body"]["candles"][1]["close"]
+
+    result = route_market_event(payload)
+
+    assert result.status == "parsed"
+    assert len(result.candles) == 2
+    assert [candle.start_timestamp for candle in result.candles] == [1_783_720_000, 1_783_720_120]
+    assert len(result.errors) == 1
+    assert result.errors[0].path == "$.msg.body.candles.1.close"
+
+
+def test_first_candles_list_can_use_top_level_active_id_and_size_defaults() -> None:
+    payload = first_candles_list_payload(2)
+    body = payload["msg"]["body"]
+    body["active_id"] = 2298
+    body["size"] = 300
+    for candle in body["candles"]:
+        del candle["active_id"]
+        del candle["size"]
+
+    result = route_market_event(payload)
+
+    assert result.status == "parsed"
+    assert all(candle.active_id == 2298 for candle in result.candles)
+    assert all(candle.raw_size == 300 for candle in result.candles)
+
+
+def test_first_candles_preserves_observed_symbol_from_body() -> None:
+    payload = first_candles_payload()
+    payload["msg"]["body"]["symbol"] = "BTC/USD"
+
+    result = route_market_event(payload)
+
+    assert result.status == "parsed"
+    assert all(candle.symbol == "BTC/USD" for candle in result.candles)
+
+
+def test_first_candles_list_preserves_observed_symbol_per_candle() -> None:
+    payload = first_candles_list_payload(2)
+    payload["msg"]["body"]["candles"][0]["symbol"] = "EURUSD OTC"
+    payload["msg"]["body"]["candles"][1]["symbol"] = "EUR/USD OTC"
+
+    result = route_market_event(payload)
+
+    assert result.status == "parsed"
+    assert [candle.symbol for candle in result.candles] == ["EURUSD OTC", "EUR/USD OTC"]

@@ -8,8 +8,10 @@ CandleStoreWriteStatus = Literal["added", "updated", "ignored", "rejected"]
 
 @dataclass(frozen=True, order=True)
 class CandleSeriesKey:
-    active_id: int
     raw_size: int
+    provider: str = "POLARIUM"
+    symbol: str | None = None
+    active_id: int | None = None
 
 
 @dataclass(frozen=True)

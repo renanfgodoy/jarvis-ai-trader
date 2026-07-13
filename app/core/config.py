@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     default_market_provider: str = "simulated"
     default_symbol: str = "EURUSD-OTC"
     default_timeframe: str = "M1"
+    market_persistence_database_path: str = ".jarvis_cache/market/candles.sqlite3"
+    market_persistence_retention_per_series: int = 1000
+    market_candle_min_timestamp: int = 1_500_000_000
+    market_candle_future_tolerance_seconds: int = 300
+
+    iq_option_provider_enabled: bool = True
+    iq_option_read_only: bool = True
+    iq_option_account_mode: str = "PRACTICE"
+    iq_option_default_candle_limit: int = 200
+    iq_option_poll_interval_seconds: float = 1.0
+    iq_option_email: str | None = None
+    iq_option_password: str | None = None
+
+    polarium_provider_enabled: bool = False
 
     # V0.21.0 — Polarium OAuth Session Engine
     # These settings are optional. Keep secrets only in the local .env.

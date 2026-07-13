@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
-from app.market.chart.models import ChartSeries
+from app.market.chart.models import ChartSeries, ChartSeriesSummary
 from app.market.runtime import market_chart_runtime_service
 
 router = APIRouter(prefix="/market/chart", tags=["Market Chart"])
+
+
+@router.get("/series")
+def get_market_chart_series() -> dict:
+    """Return read-only Candle Store series metadata for compact analysis screens."""
+
+    return {
+        "series": [_series_summary_to_response(summary) for summary in market_chart_runtime_service.get_available_series()],
+    }
 
 
 @router.get("")
@@ -22,7 +31,9 @@ def get_market_chart(
 
 def _series_to_response(series: ChartSeries) -> dict:
     return {
+        "provider": series.provider,
         "active_id": series.active_id,
+        "symbol": series.symbol,
         "raw_size": series.raw_size,
         "count": len(series.candles),
         "candles": [
@@ -35,4 +46,15 @@ def _series_to_response(series: ChartSeries) -> dict:
             }
             for candle in series.candles
         ],
+    }
+
+
+def _series_summary_to_response(summary: ChartSeriesSummary) -> dict:
+    return {
+        "provider": summary.provider,
+        "active_id": summary.active_id,
+        "symbol": summary.symbol,
+        "raw_size": summary.raw_size,
+        "count": summary.count,
+        "latest_time": summary.latest_time,
     }

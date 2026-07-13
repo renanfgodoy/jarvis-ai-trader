@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 MarketEventStatus = Literal["parsed", "unsupported", "invalid"]
-MarketEventSource = Literal["polarium"]
+MarketEventSource = Literal["polarium", "iq_option"]
 
 
 @dataclass(frozen=True)

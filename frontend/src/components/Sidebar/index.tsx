@@ -1,5 +1,4 @@
-import { BrainCircuit, FlaskConical, History, Home, LineChart, PlugZap, Settings } from 'lucide-react';
-import { brand } from '../../branding/brand';
+import { BrainCircuit, History, Home, LineChart, Settings } from 'lucide-react';
 import type { AppRoute } from '../../hooks/useAppNavigation';
 import BrandLogo from '../BrandLogo';
 
@@ -9,9 +8,7 @@ const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementTyp
   { route: '/market-chart', label: 'Real Chart', icon: LineChart },
   { route: '/analysis', label: 'AI Analysis', icon: BrainCircuit },
   { route: '/replay', label: 'Replay', icon: History },
-  { route: '/connections/polarium', label: 'Connections', icon: PlugZap },
-  { route: '/settings', label: 'Settings', icon: Settings },
-  { route: '/labs/polarium', label: 'Polarium Lab', icon: FlaskConical, group: 'Developer' }
+  { route: '/settings', label: 'Settings', icon: Settings }
 ];
 
 export default function Sidebar({
@@ -55,13 +52,7 @@ export default function Sidebar({
           </div>
         ))}
       </nav>
-
-      <div className="mt-auto rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ambiente</p>
-        <p className="mt-1 text-sm font-black text-emerald-300">{brand.environment}</p>
-        <p className="mt-2 text-xs leading-relaxed text-slate-400">Execução real bloqueada. Conta DEMO obrigatória.</p>
-      </div>
-      <p className="mt-4 text-xs tracking-widest text-slate-500">v{brand.version}</p>
+      <div className="mt-auto" />
     </aside>
   );
 }

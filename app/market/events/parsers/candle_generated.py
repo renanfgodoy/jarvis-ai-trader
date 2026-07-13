@@ -17,7 +17,7 @@ def parse_candle_generated(message: dict[str, Any]) -> tuple[NormalizedMarketCan
     return (
         NormalizedMarketCandle(
             active_id=_as_int(body["active_id"]),
-            symbol=None,
+            symbol=_as_symbol(body.get("symbol")),
             raw_size=_as_int(body["size"]),
             timeframe=None,
             start_timestamp=_as_int(body["from"]),
@@ -102,6 +102,14 @@ def _validate_body(body: dict[str, Any], path: str) -> tuple[MarketEventParseErr
                 path=f"{path}.volume",
             )
         )
+    if "symbol" in body and _as_symbol(body.get("symbol")) is None:
+        errors.append(
+            MarketEventParseError(
+                code="invalid_symbol",
+                message="Expected sanitized market symbol when symbol is present.",
+                path=f"{path}.symbol",
+            )
+        )
     return tuple(errors)
 
 
@@ -119,3 +127,20 @@ def _as_int(value: Any) -> int:
 
 def _as_float(value: Any) -> float:
     return float(value)
+
+
+def _as_symbol(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = " ".join(value.strip().split())
+    if len(stripped) < 2 or len(stripped) > 40:
+        return None
+    lowered = stripped.lower()
+    if any(marker in lowered for marker in ("token", "cookie", "authorization", "bearer", "ssid", "password", "credential")):
+        return None
+    if not any(char.isalpha() for char in stripped):
+        return None
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/._ -")
+    if any(char not in allowed for char in stripped):
+        return None
+    return stripped

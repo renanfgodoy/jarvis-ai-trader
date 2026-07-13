@@ -74,3 +74,20 @@ def test_candle_generated_preserves_volume_without_visual_timeframe() -> None:
     candle = result.candles[0]
     assert candle.volume == 12.5
     assert candle.timeframe is None
+
+
+def test_candle_generated_preserves_observed_symbol_when_present() -> None:
+    payload = candle_generated_payload()
+    payload["msg"]["body"]["symbol"] = "EUR/USD OTC"
+
+    result = route_market_event(payload)
+
+    assert result.status == "parsed"
+    assert result.candles[0].symbol == "EUR/USD OTC"
+
+
+def test_candle_generated_keeps_symbol_absent_when_not_observed() -> None:
+    result = route_market_event(candle_generated_payload())
+
+    assert result.status == "parsed"
+    assert result.candles[0].symbol is None

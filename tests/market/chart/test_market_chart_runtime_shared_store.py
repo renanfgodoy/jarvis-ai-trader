@@ -79,3 +79,16 @@ def test_shared_store_keeps_series_isolated_by_active_id_and_raw_size() -> None:
     assert [item["time"] for item in series_76_60["candles"]] == [100]
     assert [item["time"] for item in series_2298_60["candles"]] == [200]
     assert [item["time"] for item in series_76_300["candles"]] == [300]
+
+
+def test_chart_api_returns_historical_bootstrap_in_chronological_order() -> None:
+    for index in range(100):
+        market_pipeline.process(candle_generated_payload(start_timestamp=1_000 + index * 60, close=1.1 + index / 1000))
+
+    response = client.get("/api/v1/market/chart", params={"active_id": 76, "raw_size": 60, "limit": 200})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 100
+    assert [item["time"] for item in payload["candles"][:3]] == [1_000, 1_060, 1_120]
+    assert payload["candles"][-1]["time"] == 6_940

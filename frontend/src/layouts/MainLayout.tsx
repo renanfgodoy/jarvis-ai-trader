@@ -3,13 +3,9 @@ import { useState } from 'react';
 import Header from '../components/Header/index';
 import Sidebar from '../components/Sidebar/index';
 import type { AppRoute } from '../hooks/useAppNavigation';
-import { usePolariumAccount } from '../hooks/usePolariumAccount';
-import { useSystemStatus } from '../hooks/useSystemStatus';
 
 export default function MainLayout({ activeRoute, onNavigate, children }: { activeRoute: AppRoute; onNavigate: (route: AppRoute) => void; children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { health, provider } = useSystemStatus();
-  const { polarium } = usePolariumAccount();
 
   return (
     <div className="min-h-screen bg-[#05051f] text-slate-200">
@@ -18,7 +14,7 @@ export default function MainLayout({ activeRoute, onNavigate, children }: { acti
         {mobileNavOpen && <button aria-label="Fechar navegação" className="fixed inset-0 z-20 bg-slate-950/70 lg:hidden" onClick={() => setMobileNavOpen(false)} />}
         <Sidebar activeRoute={activeRoute} onNavigate={onNavigate} mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <main className="min-w-0 flex-1">
-          <Header health={health.data} provider={provider.data} account={polarium.data} onMenuClick={() => setMobileNavOpen(true)} />
+          <Header onMenuClick={() => setMobileNavOpen(true)} />
           {children}
         </main>
       </div>

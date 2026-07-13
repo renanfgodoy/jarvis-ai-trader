@@ -51,5 +51,32 @@ def test_use_real_candles_polls_and_skips_unnecessary_renders() -> None:
     assert "window.setInterval" in source
     assert "SYNC_INTERVAL_MS" in source
     assert "isRequestInFlight" in source
-    assert "reconcileRealCandleSeries(previousCandles, payload.candles)" in source
+    assert "reconcileRealCandleSeries(previousCandles, payload.candles, DEFAULT_LIMIT)" in source
     assert "Object.is(updatedCandles, previousCandles) ? previousCandles : updatedCandles" in source
+
+
+def test_sync_merges_partial_responses_without_shrinking_history() -> None:
+    source = read_source(SYNC_SOURCE)
+
+    assert "mergeCandlesByTime(previous, next, limit)" in source
+    assert "const mergedByTime = new Map<number, TCandle>()" in source
+    assert "for (const candle of previous)" in source
+    assert "for (const candle of next)" in source
+    assert "mergedByTime.set(candle.time, candle)" in source
+
+
+def test_sync_sorts_deduplicates_and_trims_only_oldest_candles() -> None:
+    source = read_source(SYNC_SOURCE)
+
+    assert ".sort((left, right) => left.time - right.time)" in source
+    assert "return candles.slice(candles.length - limit)" in source
+    assert "trimToLatest(merged, limit)" in source
+
+
+def test_hook_guards_against_stale_or_wrong_context_responses() -> None:
+    source = read_source(HOOK_SOURCE)
+
+    assert "requestSequenceRef" in source
+    assert "lastAppliedRequestRef" in source
+    assert "requestSequence <= lastAppliedRequestRef.current" in source
+    assert "if (!sameSeries(payloadContext, nextDisplayedContext))" in source

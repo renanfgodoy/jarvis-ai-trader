@@ -14,6 +14,18 @@ class ChartCandle:
 
 @dataclass(frozen=True)
 class ChartSeries:
-    active_id: int
+    provider: str
+    active_id: int | None
+    symbol: str | None
     raw_size: int
     candles: tuple[ChartCandle, ...]
+
+
+@dataclass(frozen=True)
+class ChartSeriesSummary:
+    provider: str
+    active_id: int | None
+    symbol: str | None
+    raw_size: int
+    count: int
+    latest_time: int | None
