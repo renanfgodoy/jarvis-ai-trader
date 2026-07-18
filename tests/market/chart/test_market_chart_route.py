@@ -2,13 +2,14 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.market.events.models import NormalizedMarketCandle
-from app.market.runtime import market_candle_store
+from app.market.runtime import chart_bucket_consistency_diagnostic, market_candle_store
 
 client = TestClient(app)
 
 
 def setup_function() -> None:
     market_candle_store.clear()
+    chart_bucket_consistency_diagnostic.clear()
 
 
 def make_candle(start_timestamp: int, *, active_id: int = 76, raw_size: int = 60, symbol: str | None = None) -> NormalizedMarketCandle:
@@ -75,3 +76,55 @@ def test_market_chart_route_returns_observed_symbol_for_selected_series() -> Non
 
     assert response.status_code == 200
     assert response.json()["symbol"] == "EUR/USD OTC"
+
+
+def test_market_chart_route_preserves_explicit_active_id_and_raw_size() -> None:
+    market_candle_store.add(make_candle(100, active_id=76, raw_size=300, symbol="EURUSD-OTC"))
+    market_candle_store.add(make_candle(200, active_id=1857, raw_size=300, symbol="XAUUSD-OTC"))
+    market_candle_store.add(make_candle(300, active_id=2298, raw_size=300, symbol="USDBRL-OTC"))
+
+    for active_id, expected_time in [(76, 100), (1857, 200), (2298, 300)]:
+        response = client.get("/api/v1/market/chart", params={"active_id": active_id, "raw_size": 300, "limit": 200})
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["active_id"] == active_id
+        assert payload["raw_size"] == 300
+        assert payload["count"] == 1
+        assert payload["candles"][0]["time"] == expected_time
+
+
+def test_market_chart_route_reports_missing_bucket_without_reusing_previous_series() -> None:
+    market_candle_store.add(make_candle(100, active_id=76, raw_size=300, symbol="EURUSD-OTC"))
+
+    response = client.get("/api/v1/market/chart", params={"active_id": 1857, "raw_size": 300, "limit": 200})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "provider": "POLARIUM",
+        "active_id": 1857,
+        "symbol": None,
+        "raw_size": 300,
+        "count": 0,
+        "candles": [],
+    }
+    records = chart_bucket_consistency_diagnostic.records()
+    assert any(record.event == "CHART_BUCKET_MISSING" and record.store_key == "POLARIUM:1857:300" for record in records)
+
+
+def test_market_chart_route_diagnostic_response_matches_requested_bucket() -> None:
+    market_candle_store.add(make_candle(100, active_id=1857, raw_size=300, symbol="XAUUSD-OTC"))
+
+    response = client.get("/api/v1/market/chart", params={"active_id": 1857, "raw_size": 300, "limit": 200})
+
+    assert response.status_code == 200
+    response_records = [record for record in chart_bucket_consistency_diagnostic.records() if record.event == "CHART_RESPONSE_CREATED"]
+    latest = response_records[-1]
+    assert latest.active_id_requested == 1857
+    assert latest.raw_size_requested == 300
+    assert latest.store_key == "POLARIUM:1857:300"
+    assert latest.response_active_id == 1857
+    assert latest.response_raw_size == 300
+    assert latest.response_count == 1
+    assert latest.first_timestamp == 100
+    assert latest.last_timestamp == 100

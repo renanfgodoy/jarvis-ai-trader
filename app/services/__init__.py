@@ -1,1 +1,1 @@
-"""Camada de serviços do J.A.R.V.I.S AI TRADER."""
+"""Camada de serviços da Friday AI Platform."""

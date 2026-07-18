@@ -1,0 +1,2 @@
+class ICTStrategy:
+    name = "ICT"

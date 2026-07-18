@@ -5,6 +5,7 @@ MARKET_CHART = ROOT / "frontend/src/pages/MarketChart.tsx"
 REAL_CANDLE_CHART = ROOT / "frontend/src/components/chart/RealCandleChart/index.tsx"
 USE_REAL_CANDLES = ROOT / "frontend/src/hooks/useRealCandles.ts"
 SYNC_SOURCE = ROOT / "frontend/src/components/chart/RealCandleChart/sync.ts"
+CHART_BINDING_TRACE = ROOT / "frontend/src/debug/chartBindingTrace.ts"
 SIDEBAR = ROOT / "frontend/src/components/Sidebar/index.tsx"
 MAIN_LAYOUT = ROOT / "frontend/src/layouts/MainLayout.tsx"
 APP_NAVIGATION = ROOT / "frontend/src/hooks/useAppNavigation.ts"
@@ -16,8 +17,10 @@ def test_compact_workspace_uses_real_series_controls() -> None:
 
     assert "IQ Option" in source
     assert "formatRawSize" in source
-    assert "useRealCandles" not in source
+    assert "useRealCandles({ enabled: true, followPolarium: true })" in source
     assert "Polarium Browser Live" not in source
+    assert "POLARIUM CONECTADA" in source
+    assert "POLARIUM OFFLINE" in source
     assert "Seguir Polarium" not in source
     assert "Active ID" not in source
 
@@ -60,6 +63,8 @@ def test_real_candles_hook_uses_series_endpoint_and_no_fixed_ids() -> None:
     source = USE_REAL_CANDLES.read_text()
 
     assert "/market/chart/series" in source
+    assert "/market/chart?${params.toString()}" in source
+    assert "/market/providers/iq-option/candles" not in source
     assert "DEFAULT_ACTIVE_ID" not in source
     assert "DEFAULT_RAW_SIZE" not in source
     assert "followPolarium" in source
@@ -68,13 +73,149 @@ def test_real_candles_hook_uses_series_endpoint_and_no_fixed_ids() -> None:
     assert "}, [enabled, followPolarium, requestedActiveId, requestedRawSize]);" in source
 
 
+def test_chart_binding_trace_is_dev_only_and_sanitized() -> None:
+    source = CHART_BINDING_TRACE.read_text()
+
+    assert "import.meta.env.DEV" in source
+    assert "friday_chart_binding_trace" in source
+    assert "MAX_TRACE_RECORDS = 500" in source
+    assert "__FRIDAY_CHART_BINDING_TRACE__" in source
+    assert "__FRIDAY_EXPORT_CHART_BINDING_TRACE__" in source
+    assert "Friday Trade - Chart Binding Trace" in source
+    assert "cookies" not in source.lower()
+    assert "authorization" not in source.lower()
+    assert "payload" not in source.lower()
+
+
+def test_chart_binding_trace_registers_required_pipeline_events() -> None:
+    source = CHART_BINDING_TRACE.read_text()
+
+    for event in [
+        "SESSION_CONTEXT_RECEIVED",
+        "ACTIVE_KEY_RESOLVED",
+        "CHART_FETCH_START",
+        "CHART_FETCH_SUCCESS",
+        "CHART_FETCH_EMPTY",
+        "CHART_FETCH_ERROR",
+        "STALE_RESPONSE_IGNORED",
+        "STALE_ACTIVE_KEY_RESPONSE_IGNORED",
+        "CANDLES_NORMALIZED",
+        "CANDLE_STATE_UPDATED",
+        "SOURCE_SELECTED",
+        "GRAPH_PROPS_UPDATED",
+        "GRAPH_RENDERED",
+        "GRAPH_EMPTY",
+        "GRAPH_LOADING",
+        "GRAPH_ERROR",
+    ]:
+        assert event in source
+
+
+def test_use_real_candles_traces_current_polarium_chart_api_binding() -> None:
+    source = USE_REAL_CANDLES.read_text()
+
+    assert "recordChartBindingTrace('SESSION_CONTEXT_RECEIVED'" in source
+    assert "recordChartBindingTrace('ACTIVE_KEY_RESOLVED'" in source
+    assert "recordChartBindingTrace('CHART_FETCH_START'" in source
+    assert "recordChartBindingTrace(payload.candles.length ? 'CHART_FETCH_SUCCESS' : 'CHART_FETCH_EMPTY'" in source
+    assert "recordChartBindingTrace('STALE_RESPONSE_IGNORED'" in source
+    assert "recordChartBindingTrace('CANDLES_NORMALIZED'" in source
+    assert "recordChartBindingTrace('CANDLE_STATE_UPDATED'" in source
+    assert "request_sequence: requestSequence" in source
+    assert "requested_active_id: nextDisplayedContext.activeId" in source
+    assert "requested_raw_size: nextDisplayedContext.rawSize" in source
+    assert "response_active_id: payload.active_id" in source
+    assert "response_raw_size: payload.raw_size" in source
+    assert "current_context_active_id:" in source
+    assert "current_context_raw_size:" in source
+    assert "response_applied: true" in source
+    assert "response_ignored: true" in source
+    assert "response_count: responseCount" in source
+    assert "normalized_count: nextCandles.length" in source
+    assert "state_count: finalCandles.length" in source
+    assert "/market/chart?${params.toString()}" in source
+    assert "/market/providers/iq-option/candles" not in source
+
+
+def test_use_real_candles_ignores_stale_active_key_responses() -> None:
+    source = USE_REAL_CANDLES.read_text()
+
+    assert "recordChartBindingTrace('STALE_ACTIVE_KEY_RESPONSE_IGNORED'" in source
+    assert "PAYLOAD_CONTEXT_MISMATCH" in source
+    assert "response_ignored: true" in source
+    assert "sameSeries(payloadContext, nextDisplayedContext)" in source
+
+
+def test_chart_binding_trace_exports_requested_response_and_current_context() -> None:
+    source = CHART_BINDING_TRACE.read_text()
+
+    for field in [
+        "requested_active_id",
+        "requested_raw_size",
+        "response_active_id",
+        "response_raw_size",
+        "current_context_active_id",
+        "current_context_raw_size",
+        "response_applied",
+        "response_ignored",
+    ]:
+        assert field in source
+    assert "sanitizeNullableBoolean" in source
+
+
+def test_market_chart_traces_source_selection_and_graph_props() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "selectedChartSource: ChartBindingSelectedSource" in source
+    assert "POLARIUM_CHART_API" in source
+    assert "LEGACY_IQ_BLOCKED" in source
+    assert "recordChartBindingTrace('SOURCE_SELECTED'" in source
+    assert "recordChartBindingTrace('GRAPH_PROPS_UPDATED'" in source
+    assert "graph_prop_count: chartCandles.length" in source
+
+
+def test_real_candle_chart_traces_render_empty_loading_and_error_states() -> None:
+    source = REAL_CANDLE_CHART.read_text()
+
+    assert "recordChartBindingTrace('GRAPH_PROPS_UPDATED'" in source
+    assert "recordChartBindingTrace('GRAPH_LOADING'" in source
+    assert "recordChartBindingTrace(data.length ? 'GRAPH_RENDERED' : 'GRAPH_EMPTY'" in source
+    assert "recordChartBindingTrace('GRAPH_EMPTY'" in source
+    assert "recordChartBindingTrace('GRAPH_ERROR'" in source
+    assert "recordChartBindingTrace('GRAPH_RENDERED'" in source
+
+
+def test_market_chart_restores_polarium_chart_api_as_primary_source() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "const POLARIUM_BASELINE_MODE = true" in source
+    assert "const chartCandles = POLARIUM_BASELINE_MODE ? polariumLive.candles" in source
+    assert "const chartRawSize = POLARIUM_BASELINE_MODE ? polariumSession.rawSize ?? polariumLive.rawSize ?? null" in source
+    assert "const chartActiveId = POLARIUM_BASELINE_MODE ? polariumSession.activeId ?? polariumLive.activeId" in source
+    assert "useRealCandles({ enabled: true, followPolarium: true })" in source
+    assert "chartActiveId !== null && chartRawSize !== null" in source
+    assert "(polariumConnected || (iqSymbol && iqRawSize))" not in source
+
+
+def test_market_chart_iq_option_runtime_is_isolated_from_primary_chart() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert source.count("if (POLARIUM_BASELINE_MODE) return;") >= 4
+    assert "/market/providers/iq-option/candles" in source
+    candles_request_index = source.index("/market/providers/iq-option/candles")
+    guarded_effect_index = source.rfind("if (POLARIUM_BASELINE_MODE) return;", 0, candles_request_index)
+    assert guarded_effect_index > -1
+    assert "function PolariumEmptyChart" in source
+    assert "Aguardando dados reais da Polarium" in source
+
+
 def test_real_chart_uses_observed_symbol_as_display_label() -> None:
     page = MARKET_CHART.read_text()
     chart = REAL_CANDLE_CHART.read_text()
     hook = USE_REAL_CANDLES.read_text()
 
-    assert "symbol={displayedSymbol !== 'Não disponível' ? displayedSymbol : null}" in page
-    assert "assetLabel: activeSymbol ?? 'Não disponível'" in hook
+    assert "symbol={chartSymbol !== 'Não disponível' ? chartSymbol : null}" in page
+    assert "assetLabel: activeSymbol ?? (activeId !== null ? 'ATIVO NÃO IDENTIFICADO' : 'Não disponível')" in hook
     assert "symbol ?? 'Ativo não identificado'" in chart
 
 
@@ -82,9 +223,9 @@ def test_auto_selection_requires_atomic_chart_probe_pair_with_candles() -> None:
     source = USE_REAL_CANDLES.read_text()
 
     assert "resolveActiveSeries(statusPayload, nextAvailableSeries)" in source
-    assert "const tracedCount = status.last_trace?.chart_api_probe?.count" in source
-    assert "tracedCount > 0" in source
-    assert "hasAvailableSeries(availableSeries, tracedContext)" in source
+    assert "status.sessionContext.visibleActiveId" in source
+    assert "hasAvailableSeries(availableSeries, context)" in source
+    assert "return null" in source
 
 
 def test_auto_selection_does_not_fabricate_pairs_from_independent_lists() -> None:
@@ -100,8 +241,8 @@ def test_hook_preserves_displayed_candles_during_empty_or_incomplete_polling() -
 
     assert "shouldPreserveDisplayedCandles" in source
     assert "shouldKeepPreviousCandles" in source
-    assert "if (!payload.candles.length && previousCandles.length)" in source
-    assert "return previousCandles" in source
+    assert "if (!nextCandles.length && previousCandles.length)" in source
+    assert "nextCandles = previousCandles" in source
     assert "candlesLengthRef.current > 0" in source
 
 
@@ -424,14 +565,15 @@ def test_iq_option_context_hides_follow_polarium_and_uses_plain_counter() -> Non
     assert "504 de 100" not in source
 
 
-def test_iq_only_market_chart_does_not_mount_polarium_runtime() -> None:
+def test_market_chart_mounts_polarium_visual_integration_without_browser_bridge() -> None:
     source = MARKET_CHART.read_text()
 
-    assert "useRealCandles" not in source
+    assert "useRealCandles({ enabled: true, followPolarium: true })" in source
     assert "browser-bridge/status" not in source
-    assert "/market/chart/series" not in source
-    assert "active_id" not in source
-    assert "POLARIUM" not in source
+    assert "polariumConnected" in source
+    assert "chartCandles" in source
+    assert "chartActiveId" in source
+    assert "POLARIUM CONECTADA" in source
     assert "controller.abort()" in source
     assert "window.clearInterval(intervalId)" in source
 
@@ -447,6 +589,99 @@ def test_iq_option_assets_use_connect_and_controlled_retry() -> None:
     assert "marketType === 'OTC' ? 'EURUSD-OTC' : 'EURUSD'" in source
     assert "asset.symbol === preferredSymbol" in source
     assert "Tentar novamente" in source
+
+
+def test_timeframe_feed_quality_ranking_filters_operator_asset_list() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "type IQFeedQualityLevel = 'EXCELLENT' | 'GOOD' | 'LIMITED' | 'STALE' | 'NO_DATA' | 'CHECKING'" in source
+    assert "rankIqAssets(iqAssets, iqAssetQualityByKey, iqMarketType, iqRawSize, iqSymbol, showAllIqAssets)" in source
+    assert "RECOMENDADOS PARA" in source
+    assert "AINDA NAO AVALIADOS" in source
+    assert "LIMITADOS" in source
+    assert "INDISPONIVEIS" in source
+    assert "Mostrar todos os ativos" in source
+    assert "asset.quality.classification === 'EXCELLENT' || asset.quality.classification === 'GOOD'" in source
+    assert "showAllIqAssets && rankedAssets.unavailable.length > 0" in source
+
+
+def test_timeframe_feed_quality_is_contextual_and_not_fixed_by_symbol_suffix() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "feedQualityKey(marketType, asset.symbol, rawSize)" in source
+    assert "market_type: marketType" in source
+    assert "raw_size: rawSize" in source
+    assert "fallbackFeedQuality(marketType, asset.symbol, rawSize)" in source
+    assert "EURJPY-OTC" not in source
+    assert "USDJPY-OTC" not in source
+    assert "CADCHF" not in source
+
+
+def test_timeframe_feed_quality_does_not_create_mass_streams() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "/market/providers/iq-option/feed-quality" in source
+    assert "IQ_FEED_QUALITY_INTERVAL_MS = 5000" in source
+    assert "rankIqAssets" in source
+    assert "for (const asset of iqAssets)" not in source
+    assert "new EventSource(`${API_BASE_URL}/market/providers/iq-option/realtime-candles/stream?" in source
+
+
+def test_asset_ranking_visibility_keeps_checking_assets_visible_by_default() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "const checking = all.filter((asset) => asset.quality.classification === 'CHECKING')" in source
+    assert "const visible = showAll ? [...current, ...recommended, ...checking, ...limited, ...unavailable] : [...current, ...recommended, ...checking]" in source
+    assert "rankedAssets.checking.length > 0" in source
+    assert "Ainda não avaliado" in source
+    assert "rankedAssets.visible.length === 0" in source
+    assert "rankedAssets.all.length === 0" not in source
+
+
+def test_asset_ranking_show_all_uses_full_api_asset_list() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "return { all, visible, recommended, checking, limited, unavailable, current }" in source
+    assert "showAll ? [...current, ...recommended, ...checking, ...limited, ...unavailable]" in source
+    assert "showAllIqAssets && rankedAssets.limited.length > 0" in source
+    assert "showAllIqAssets && rankedAssets.unavailable.length > 0" in source
+
+
+def test_asset_ranking_current_asset_is_not_the_only_default_option_when_assets_are_checking() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "asset.quality.classification !== 'CHECKING'" in source
+    assert "asset.quality.classification !== 'GOOD'" in source
+    assert "asset.quality.classification !== 'EXCELLENT'" in source
+    assert "<optgroup label=\"AINDA NAO AVALIADOS\">" in source
+
+
+def test_strategy_engine_receives_feed_quality_without_signals() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "feedQuality={effectiveFeedQuality}" in source
+    assert "getStrategyReadinessFromFeedQuality(feedQuality.classification)" in source
+    assert "Feed pronto" in source
+    assert "Análise limitada" in source
+    assert "Análise bloqueada" in source
+    assert "Aguardando feed" in source
+    assert "Nenhuma análise ativa" in source
+    assert "CALL" not in source
+    assert "PUT" not in source
+
+
+def test_developer_mode_shows_feed_quality_metrics_but_operator_keeps_simple_labels() -> None:
+    source = MARKET_CHART.read_text()
+
+    assert "p95 movimento" in source
+    assert "Maior gap" in source
+    assert "Movimentos por segundo" in source
+    assert "Primeiro evento" in source
+    assert "Eventos recebidos" in source
+    assert "formatFeedQualityLabel(asset.quality.classification)" in source
+    assert "Excelente" in source
+    assert "Bom" in source
+    assert "Limitado" in source
 
 
 def test_iq_option_assets_warm_connection_even_when_status_is_connected() -> None:
@@ -499,7 +734,7 @@ def test_iq_flow_does_not_abort_shared_connection_promise_or_clear_symbol_on_ass
 def test_iq_flow_renders_fallback_symbol_option_when_assets_are_unavailable() -> None:
     source = MARKET_CHART.read_text()
 
-    assert "iqSymbol && !iqAssets.some((asset) => asset.symbol === iqSymbol)" in source
+    assert "iqSymbol && !rankedAssets.visible.some((asset) => asset.symbol === iqSymbol)" in source
     assert "<option value={iqSymbol}>{formatIqSymbol(iqSymbol)}</option>" in source
 
 

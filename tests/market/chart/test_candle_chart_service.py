@@ -3,10 +3,10 @@ from app.market.chart import CandleChartService
 from app.market.store import CandleStore
 
 
-def make_candle(start_timestamp: int, *, active_id: int = 76, raw_size: int = 60) -> NormalizedMarketCandle:
+def make_candle(start_timestamp: int, *, active_id: int | None = 76, symbol: str | None = None, raw_size: int = 60, source: str = "polarium") -> NormalizedMarketCandle:
     return NormalizedMarketCandle(
         active_id=active_id,
-        symbol=None,
+        symbol=symbol,
         raw_size=raw_size,
         timeframe=None,
         start_timestamp=start_timestamp,
@@ -16,7 +16,7 @@ def make_candle(start_timestamp: int, *, active_id: int = 76, raw_size: int = 60
         low_candidate=1.0 + start_timestamp / 100000,
         high_candidate=1.3 + start_timestamp / 100000,
         volume=0,
-        source="polarium",
+        source=source,
         source_event="candle-generated",
         source_verified=True,
         mapping_verified=False,
@@ -83,3 +83,15 @@ def test_chart_service_uses_requested_limit() -> None:
     series = service.get_chart_series(active_id=76, raw_size=60, limit=2)
 
     assert [candle.time for candle in series.candles] == [200, 300]
+
+
+def test_chart_service_does_not_return_iq_option_series_as_polarium_active_id() -> None:
+    store = CandleStore()
+    store.add(make_candle(100, active_id=None, symbol="EURUSD-OTC", source="iq_option"))
+    service = CandleChartService(store)
+
+    polarium = service.get_chart_series(active_id=76, raw_size=60, limit=50)
+    iq_series = service.get_available_series()
+
+    assert polarium.candles == ()
+    assert any(summary.provider == "IQ_OPTION" and summary.symbol == "EURUSD-OTC" for summary in iq_series)

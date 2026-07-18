@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ColorType, CrosshairMode, LineStyle, createChart, type IChartApi, type ISeriesApi, type UTCTimestamp } from 'lightweight-charts';
 import { classifyRealCandleSync } from './sync';
+import { recordChartBindingTrace, summarizeChartBindingCandles } from '../../../debug/chartBindingTrace';
+import { recordFridayLatencyAudit } from '../../../utils/latencyAudit';
 
 export type RealChartCandle = {
   time: number;
@@ -35,7 +37,26 @@ export default function RealCandleChart({ activeId, symbol, rawSize, candles, ch
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const previousDataRef = useRef<ReturnType<typeof toChartData>>([]);
   const hasFittedContentRef = useRef(false);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
   const data = useMemo(() => toChartData(candles), [candles]);
+
+  useEffect(() => {
+    recordChartBindingTrace('GRAPH_PROPS_UPDATED', {
+      active_id: activeId,
+      raw_size: rawSize,
+      symbol: symbol ?? null,
+      graph_prop_count: candles.length,
+      ...summarizeChartBindingCandles(candles)
+    });
+    recordFridayLatencyAudit('react_render_committed', {
+      active_id: activeId,
+      symbol: symbol ?? null,
+      raw_size: rawSize,
+      candle_count: candles.length,
+      render_count: renderCountRef.current
+    });
+  });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -113,28 +134,105 @@ export default function RealCandleChart({ activeId, symbol, rawSize, candles, ch
 
   useEffect(() => {
     const candleSeries = candleSeriesRef.current;
-    if (!candleSeries) return;
+    if (!candleSeries) {
+      recordChartBindingTrace('GRAPH_LOADING', {
+        active_id: activeId,
+        raw_size: rawSize,
+        symbol: symbol ?? null,
+        graph_prop_count: candles.length,
+        reason: 'SERIES_NOT_READY'
+      });
+      return;
+    }
 
     const previousData = previousDataRef.current;
     const syncAction = classifyRealCandleSync(previousData, data);
 
     if (syncAction === 'unchanged') {
+      recordChartBindingTrace(data.length ? 'GRAPH_RENDERED' : 'GRAPH_EMPTY', {
+        active_id: activeId,
+        raw_size: rawSize,
+        symbol: symbol ?? null,
+        graph_prop_count: data.length,
+        reason: 'UNCHANGED',
+        ...summarizeChartBindingCandles(candles)
+      });
       return;
     }
 
-    if ((syncAction === 'append' || syncAction === 'update') && data.length) {
-      candleSeries.update(data[data.length - 1]);
-    } else {
-      candleSeries.setData(data);
+    if (!data.length) {
+      recordChartBindingTrace('GRAPH_EMPTY', {
+        active_id: activeId,
+        raw_size: rawSize,
+        symbol: symbol ?? null,
+        graph_prop_count: 0,
+        reason: 'NO_CANDLES'
+      });
+      return;
+    }
+
+    try {
+      if ((syncAction === 'append' || syncAction === 'update') && data.length) {
+        const startedAt = performance.now();
+        candleSeries.update(data[data.length - 1]);
+        recordFridayLatencyAudit('t7_series_update', {
+          active_id: activeId,
+          symbol: symbol ?? null,
+          raw_size: rawSize,
+          candle_count: data.length,
+          sync_action: syncAction,
+          duration_ms: Math.round((performance.now() - startedAt) * 1000) / 1000
+        });
+      } else {
+        const startedAt = performance.now();
+        candleSeries.setData(data);
+        recordFridayLatencyAudit('chart_series_set_data', {
+          active_id: activeId,
+          symbol: symbol ?? null,
+          raw_size: rawSize,
+          candle_count: data.length,
+          sync_action: syncAction,
+          duration_ms: Math.round((performance.now() - startedAt) * 1000) / 1000
+        });
+      }
+    } catch (error) {
+      recordChartBindingTrace('GRAPH_ERROR', {
+        active_id: activeId,
+        raw_size: rawSize,
+        symbol: symbol ?? null,
+        graph_prop_count: data.length,
+        reason: error instanceof Error ? error.name : 'UNKNOWN_ERROR'
+      });
+      throw error;
     }
 
     previousDataRef.current = data;
+    recordChartBindingTrace('GRAPH_RENDERED', {
+      active_id: activeId,
+      raw_size: rawSize,
+      symbol: symbol ?? null,
+      graph_prop_count: data.length,
+      reason: syncAction,
+      ...summarizeChartBindingCandles(candles)
+    });
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        recordFridayLatencyAudit('t9_frame_drawn', {
+          active_id: activeId,
+          symbol: symbol ?? null,
+          raw_size: rawSize,
+          candle_count: data.length,
+          sync_action: syncAction
+        });
+      });
+    }
 
     if (data.length && !hasFittedContentRef.current) {
       chartRef.current?.timeScale().fitContent();
       hasFittedContentRef.current = true;
     }
-  }, [data]);
+  }, [activeId, data, rawSize, symbol]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-[#070920] shadow-[0_0_70px_rgba(34,211,238,0.10)]">
@@ -151,9 +249,9 @@ export default function RealCandleChart({ activeId, symbol, rawSize, candles, ch
         {!candles.length && (
           <div className="absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
             <div>
-              <p className="text-sm font-black text-white">Nenhum candle disponível no snapshot atual.</p>
+              <p className="text-sm font-black text-white">Aguardando dados do mercado...</p>
               <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-400">
-                Não foi possível atualizar este ativo.
+                O gráfico será desenhado somente após receber candles reais.
               </p>
             </div>
           </div>

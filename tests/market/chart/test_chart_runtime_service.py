@@ -1,3 +1,4 @@
+from app.market.chart.bucket_consistency import ChartBucketConsistencyDiagnostic
 from app.market.chart.runtime_service import MarketChartRuntimeService
 from app.market.events.models import NormalizedMarketCandle
 from app.market.store import CandleStore
@@ -102,3 +103,54 @@ def test_runtime_service_updates_symbol_when_selected_asset_changes() -> None:
 
     assert eurusd.symbol == "EUR/USD OTC"
     assert btcusd.symbol == "BTC/USD"
+
+
+def test_runtime_service_reads_requested_active_id_and_raw_size_bucket_only(tmp_path) -> None:
+    store = CandleStore()
+    store.add(make_candle(100, active_id=76, raw_size=300, symbol="EURUSD-OTC"))
+    store.add(make_candle(200, active_id=1857, raw_size=300, symbol="XAUUSD-OTC"))
+    store.add(make_candle(300, active_id=2298, raw_size=300, symbol="USDBRL-OTC"))
+    diagnostic = ChartBucketConsistencyDiagnostic(
+        json_path=tmp_path / "chart_bucket_consistency.json",
+        text_path=tmp_path / "chart_bucket_consistency.txt",
+    )
+    service = MarketChartRuntimeService(store, bucket_diagnostic=diagnostic)
+
+    eurusd = service.get_series(active_id=76, raw_size=300, limit=200)
+    xauusd = service.get_series(active_id=1857, raw_size=300, limit=200)
+    usdbrl = service.get_series(active_id=2298, raw_size=300, limit=200)
+
+    assert [(series.active_id, series.raw_size, series.candles[0].time) for series in (eurusd, xauusd, usdbrl)] == [
+        (76, 300, 100),
+        (1857, 300, 200),
+        (2298, 300, 300),
+    ]
+    assert [record.store_key for record in diagnostic.records() if record.event == "CHART_BUCKET_FOUND"] == [
+        "POLARIUM:76:300",
+        "POLARIUM:1857:300",
+        "POLARIUM:2298:300",
+    ]
+
+
+def test_runtime_service_does_not_share_cache_between_assets_or_timeframes(tmp_path) -> None:
+    store = CandleStore()
+    store.add(make_candle(100, active_id=76, raw_size=60, symbol="EURUSD-OTC"))
+    store.add(make_candle(200, active_id=76, raw_size=300, symbol="EURUSD-OTC"))
+    store.add(make_candle(300, active_id=1857, raw_size=300, symbol="XAUUSD-OTC"))
+    diagnostic = ChartBucketConsistencyDiagnostic(
+        json_path=tmp_path / "chart_bucket_consistency.json",
+        text_path=tmp_path / "chart_bucket_consistency.txt",
+    )
+    service = MarketChartRuntimeService(store, bucket_diagnostic=diagnostic)
+
+    eurusd_m5 = service.get_series(active_id=76, raw_size=300, limit=200)
+    eurusd_m1 = service.get_series(active_id=76, raw_size=60, limit=200)
+    xauusd_m5 = service.get_series(active_id=1857, raw_size=300, limit=200)
+    missing = service.get_series(active_id=1857, raw_size=60, limit=200)
+
+    assert [candle.time for candle in eurusd_m5.candles] == [200]
+    assert [candle.time for candle in eurusd_m1.candles] == [100]
+    assert [candle.time for candle in xauusd_m5.candles] == [300]
+    assert missing.candles == ()
+    missing_records = [record for record in diagnostic.records() if record.event == "CHART_BUCKET_MISSING"]
+    assert missing_records[-1].store_key == "POLARIUM:1857:60"

@@ -1,18 +1,12 @@
 import MainLayout from './layouts/MainLayout';
 import { useAppNavigation } from './hooks/useAppNavigation';
 import Branding from './pages/Branding';
-import PolariumConnections from './pages/connections/PolariumConnections';
+import CoreDemo from './pages/CoreDemo';
 import Login from './pages/Login';
-import AIAnalysis from './pages/AIAnalysis';
-import Markets from './pages/Markets';
-import MarketChart from './pages/MarketChart';
-import Operation from './pages/Operation';
-import PolariumLab from './pages/labs/PolariumLab';
-import Replay from './pages/Replay';
 import Settings from './pages/Settings';
+import Vision from './pages/Vision';
 import { brand } from './branding/brand';
 import { useEffect } from 'react';
-import { MarketDataProvider } from './market-data/MarketDataContext';
 
 export default function App() {
   const { route, navigate } = useAppNavigation();
@@ -34,19 +28,14 @@ export default function App() {
   }
 
   return (
-    <MarketDataProvider>
-      <MainLayout activeRoute={route} onNavigate={navigate}>
-        {route === '/connections/polarium' && <PolariumConnections />}
-        {route === '/dashboard' && <Operation />}
-        {route === '/markets' && <Markets />}
-        {route === '/market-chart' && <MarketChart />}
-        {route === '/analysis' && <AIAnalysis />}
-        {route === '/replay' && <Replay />}
-        {(route === '/developer/brand-center' || route === '/branding') && <Branding />}
-        {route === '/labs/polarium' && <PolariumLab />}
-        {route === '/settings' && <Settings />}
-        {route === '/operation' && <Operation />}
-      </MainLayout>
-    </MarketDataProvider>
+    <MainLayout activeRoute={route} onNavigate={navigate}>
+      {route === '/dashboard' && <Vision />}
+      {route === '/vision' && <Vision />}
+      {route === '/history' && <Vision />}
+      {route === '/risk' && <Vision />}
+      {route === '/developer/core-demo' && <CoreDemo />}
+      {(route === '/developer/brand-center' || route === '/branding') && <Branding />}
+      {route === '/settings' && <Settings />}
+    </MainLayout>
   );
 }

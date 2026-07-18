@@ -7,6 +7,7 @@ import time
 
 from app.market.events.models import NormalizedMarketCandle
 from app.market.providers.iq_option.provider import IQOptionMarketDataProvider
+from app.market.providers.iq_option.feed_quality import FeedQualitySnapshot, FeedQualityTracker
 from app.market.providers.models import MarketAsset, MarketCandleBatch, MarketCandleRequest
 from app.market.providers.models import ProviderCandle
 from app.market.sanity import CandleSanityGuard
@@ -134,6 +135,7 @@ class IQOptionProviderRuntime:
         self._stream_generation = 0
         self._stream_sequences: dict[tuple[str, int, str], int] = {}
         self._stream_subscribers: dict[tuple[str, int, str], int] = {}
+        self._feed_quality = FeedQualityTracker()
 
     @property
     def provider(self) -> IQOptionMarketDataProvider:
@@ -158,10 +160,12 @@ class IQOptionProviderRuntime:
     def begin_realtime_stream(self, request: MarketCandleRequest) -> IQOptionRealtimeStreamSubscription:
         context = _context_for(request)
         with self._lock:
+            self._feed_quality.start(market_type=request.market_type, symbol=request.symbol, raw_size=request.raw_size, now_ms=_epoch_ms())
             if self._stream_active_context != context:
                 self._stream_generation += 1
                 self._stream_active_context = context
                 self._stream_sequences[context] = 0
+                self._feed_quality.record_reconnect(market_type=request.market_type, symbol=request.symbol, raw_size=request.raw_size, now_ms=_epoch_ms())
             self._stream_subscribers[context] = self._stream_subscribers.get(context, 0) + 1
             return IQOptionRealtimeStreamSubscription(context=context, generation=self._stream_generation)
 
@@ -237,6 +241,10 @@ class IQOptionProviderRuntime:
                     if count > 0
                 },
             }
+
+    def feed_quality(self, request: MarketCandleRequest) -> FeedQualitySnapshot:
+        with self._lock:
+            return self._feed_quality.snapshot(market_type=request.market_type, symbol=request.symbol, raw_size=request.raw_size, now_ms=_epoch_ms())
 
     def is_realtime_stream_current(self, subscription: IQOptionRealtimeStreamSubscription) -> bool:
         return self._is_current_stream(subscription)
@@ -382,6 +390,16 @@ class IQOptionProviderRuntime:
         source_mode = _classify_realtime_source(batch, load_result)
         if source_mode != "STALE" and load_result.accepted > 0 and load_result.stored == 0 and load_result.updated == 0:
             source_mode = "SNAPSHOT"
+        latest = batch.candles[-1] if batch.candles else None
+        self._feed_quality.record_event(
+            market_type=request.market_type,
+            symbol=request.symbol,
+            raw_size=request.raw_size,
+            source_mode=source_mode,
+            candle=latest,
+            now_ms=worker_received_at,
+            error_code=load_result.last_error_code,
+        )
         return (
             IQOptionRealtimeResult(
                 load=load_result,

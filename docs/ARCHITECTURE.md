@@ -1,8 +1,8 @@
-# J.A.R.V.I.S AI Trader Architecture
+# Friday AI Platform Architecture
 
 ## Visao geral
 
-J.A.R.V.I.S AI Trader e uma plataforma profissional de apoio a decisao em trading com IA. O objetivo arquitetural nao e criar apenas um robo, mas uma base modular para crescer por anos com conectores, dados de mercado, motores de IA, risco, execucao, diagnosticos e frontend operacional.
+Friday AI Platform e uma plataforma modular de IA. O trading permanece como modulo historico e experimental, mas a arquitetura passa a ser centrada em Core, Modules, Shared Contracts e providers isolados. O objetivo arquitetural nao e criar apenas um robo, mas uma base modular para crescer por anos com engines, providers, diagnosticos, frontend e futuras experiencias Vision-First.
 
 O sistema deve evoluir com mentalidade de Software House: documentacao clara, contratos estaveis, baixo acoplamento, alta coesao, seguranca desde a origem e sprints pequenas com criterio tecnico.
 
@@ -57,7 +57,7 @@ frontend/
   widgets/
 ```
 
-Esta e a arquitetura-alvo. A implementacao atual ainda possui parte dos dominios concentrada em `app/services` e em componentes maiores do frontend. As proximas sprints devem mover fronteiras de forma incremental, sem quebrar APIs e sem alterar comportamento sem necessidade.
+Esta documentacao preserva a arquitetura historica do dominio de mercado. A arquitetura nova e oficial da plataforma esta em `docs/FRIDAY_ARCHITECTURE.md`. As proximas sprints devem mover fronteiras de forma incremental, sem quebrar APIs e sem alterar comportamento sem necessidade.
 
 ### Fronteira Polarium implementada na Sprint 3
 

@@ -34,3 +34,4 @@ dist/
 # Duplicate copies created by Finder/browser downloads
 * [0-9].*
 * ([0-9]).*
+.jarvis_private/

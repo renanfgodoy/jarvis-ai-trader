@@ -1,19 +1,21 @@
-# J.A.R.V.I.S AI TRADER — V0.24.0
+# Friday AI Platform — V0.24.0
 
-Plataforma experimental de apoio à decisão em trading, composta por backend FastAPI e frontend React/Vite.
+Plataforma modular de inteligência artificial, composta por backend FastAPI e frontend React/Vite.
 
 ## Estado atual
 
-- Dashboard profissional com gráfico candlestick.
-- Scanner Top 12 e seleção de timeframe M1, M5 e M15.
-- AI Decision Engine, Risk Manager e AutoTrade Gate em modo de laboratório.
-- Módulos de diagnóstico da integração Polarium: OAuth/PKCE, Session Inspector e WS Session Recorder.
+- Arquitetura Vision-First e Core modular em evolução.
+- Trading permanece como módulo legado/experimental, não como centro da plataforma.
+- Integrações de corretoras e provedores antigos permanecem desativadas no runtime principal.
 - Execução financeira real não está habilitada.
 
 ## Estrutura
 
 ```text
 app/         Backend FastAPI
+core/        J.A.R.V.I.S Core e engines arquiteturais
+modules/     Módulos de produto desacoplados de providers
+shared/      Contratos e interfaces compartilhadas
 frontend/    Dashboard React + TypeScript + Vite
 tests/       Testes automatizados
 docs/        Histórico técnico das Sprints
@@ -23,6 +25,7 @@ tools/       Ferramentas auxiliares de diagnóstico
 ## Documentacao tecnica
 
 - Arquitetura oficial: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Arquitetura Friday AI Platform: [docs/FRIDAY_ARCHITECTURE.md](docs/FRIDAY_ARCHITECTURE.md)
 - ADRs: [docs/adr/](docs/adr/)
 - Roadmap: [ROADMAP.md](ROADMAP.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)

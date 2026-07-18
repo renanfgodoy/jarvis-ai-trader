@@ -5,6 +5,10 @@ import PageContainer from '../components/PageContainer';
 import StatusBadge from '../components/StatusBadge';
 import RealCandleChart, { type RealChartCandle } from '../components/chart/RealCandleChart';
 import { mergeCandlesByTime } from '../components/chart/RealCandleChart/sync';
+import type { PolariumSessionContext } from '../contexts/PolariumSessionContext';
+import { recordChartBindingTrace, summarizeChartBindingCandles, type ChartBindingSelectedSource } from '../debug/chartBindingTrace';
+import { useRealCandles } from '../hooks/useRealCandles';
+import { measureFridayLatencyAudit, recordFridayLatencyAudit } from '../utils/latencyAudit';
 
 const MIN_ANALYSIS_CANDLES = 100;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1';
@@ -21,6 +25,9 @@ const IQ_CONNECT_TIMEOUT_MS = 8000;
 const IQ_ASSETS_TIMEOUT_MS = 8000;
 const IQ_CANDLES_TIMEOUT_MS = 10000;
 const IQ_REALTIME_TIMEOUT_MS = 3000;
+const IQ_FEED_QUALITY_TIMEOUT_MS = 2000;
+const IQ_FEED_QUALITY_INTERVAL_MS = 5000;
+const POLARIUM_BASELINE_MODE = true;
 const IQ_MARKET_STORAGE_KEY = 'friday.iq.market';
 const IQ_SYMBOL_STORAGE_KEY = 'friday.iq.symbol';
 const IQ_TIMEFRAME_STORAGE_KEY = 'friday.iq.rawSize';
@@ -51,6 +58,32 @@ type FridayStrategyDefinition = {
 type IQAsset = { symbol: string; display_name: string; is_open: boolean };
 type IQProviderStatus = { connected?: boolean };
 type IQSourceMode = 'CHECKING' | 'NEAR_REALTIME' | 'SNAPSHOT' | 'STALE' | 'NO_DATA';
+type IQFeedQualityLevel = 'EXCELLENT' | 'GOOD' | 'LIMITED' | 'STALE' | 'NO_DATA' | 'CHECKING';
+type IQFeedQualitySnapshot = {
+  market_type: IQMarketType;
+  symbol: string;
+  raw_size: number;
+  classification: IQFeedQualityLevel;
+  reason: string;
+  first_event_latency_ms: number | null;
+  last_event_at: number | null;
+  last_movement_at: number | null;
+  last_candle_timestamp: number | null;
+  events_received: number;
+  ohlc_changes: number;
+  identical_reads: number;
+  movement_rate: number;
+  average_movement_interval_ms: number | null;
+  p50_movement_interval_ms: number | null;
+  p95_movement_interval_ms: number | null;
+  maximum_movement_gap_ms: number | null;
+  stale_age_seconds: number | null;
+  source_mode: IQSourceMode;
+  errors: number;
+  reconnects: number;
+  measurement_window_ms: number;
+  minimum_window_ms: number;
+};
 type IQDeliveryState = 'CONNECTING' | 'SSE' | 'POLLING_FALLBACK' | 'RECONNECTING' | 'DISCONNECTED';
 type IQPushStats = {
   eventsReceived: number;
@@ -93,6 +126,9 @@ export default function MarketChart() {
   const [iqRecentMovementIntervals, setIqRecentMovementIntervals] = useState<number[]>([]);
   const [iqDeliveryState, setIqDeliveryState] = useState<IQDeliveryState>('CONNECTING');
   const [iqPushStats, setIqPushStats] = useState<IQPushStats>(() => emptyIqPushStats());
+  const [iqFeedQuality, setIqFeedQuality] = useState<IQFeedQualitySnapshot | null>(null);
+  const [iqAssetQualityByKey, setIqAssetQualityByKey] = useState<Record<string, IQFeedQualitySnapshot>>({});
+  const [showAllIqAssets, setShowAllIqAssets] = useState(false);
   const [fridayUiMode, setFridayUiMode] = useState<FridayUiMode>(() => readStoredFridayUiMode());
   const [selectedStrategyId, setSelectedStrategyId] = useState(() => localStorage.getItem(FRIDAY_STRATEGY_STORAGE_KEY) ?? '');
   const [iqDiagnosticsExpanded, setIqDiagnosticsExpanded] = useState(false);
@@ -101,12 +137,29 @@ export default function MarketChart() {
   const iqConnectPromiseRef = useRef<Promise<void> | null>(null);
   const lastMovementKeyRef = useRef<string | null>(null);
   const lastMovementTimestampRef = useRef<number | null>(null);
+  const polariumLive = useRealCandles({ enabled: true, followPolarium: true });
+  const polariumSession = polariumLive.sessionContext;
   const selectedIqAsset = useMemo(() => iqAssets.find((asset) => asset.symbol === iqSymbol) ?? null, [iqAssets, iqSymbol]);
+  const rankedAssets = useMemo(
+    () => rankIqAssets(iqAssets, iqAssetQualityByKey, iqMarketType, iqRawSize, iqSymbol, showAllIqAssets),
+    [iqAssetQualityByKey, iqAssets, iqMarketType, iqRawSize, iqSymbol, showAllIqAssets]
+  );
   const selectedStrategy = useMemo(
     () => FRIDAY_STRATEGIES.find((strategy) => strategy.id === selectedStrategyId) ?? null,
     [selectedStrategyId]
   );
   const displayedSymbol = selectedIqAsset?.display_name ?? formatIqSymbol(iqSymbol);
+  const pocketProviderActive = polariumLive.provider === 'POCKET';
+  const polariumConnected = polariumSession.connectionStatus === 'ONLINE';
+  const chartCandles = POLARIUM_BASELINE_MODE ? polariumLive.candles : polariumConnected ? polariumSession.candles : iqCandles;
+  const chartSymbol = POLARIUM_BASELINE_MODE ? polariumSession.displayName : polariumConnected ? polariumSession.displayName : displayedSymbol;
+  const chartRawSize = POLARIUM_BASELINE_MODE ? polariumSession.rawSize ?? polariumLive.rawSize ?? null : polariumConnected && polariumSession.rawSize ? polariumSession.rawSize : iqRawSize;
+  const chartActiveId = POLARIUM_BASELINE_MODE ? polariumSession.activeId ?? polariumLive.activeId : polariumConnected ? polariumSession.activeId : null;
+  const providerChartCandles = pocketProviderActive ? polariumLive.candles : chartCandles;
+  const providerChartSymbol = pocketProviderActive ? polariumLive.assetLabel : chartSymbol;
+  const providerChartRawSize = pocketProviderActive ? polariumLive.rawSize : chartRawSize;
+  const providerChartActiveId = pocketProviderActive ? null : chartActiveId;
+  const polariumHistoryLabel = formatPolariumHistoryProgress(polariumSession);
   const latest = iqCandles[iqCandles.length - 1];
   const feedState = getIqFeedState(latest?.time ?? null, iqRawSize, nowTick);
   const readiness = getReadiness({
@@ -119,9 +172,45 @@ export default function MarketChart() {
   });
   const movementSummary = getMovementSummary(iqLastMovementAt, iqRecentMovementIntervals, nowTick);
   const deliverySummary = getDeliverySummary(iqPushStats, nowTick);
+  const effectiveFeedQuality = iqFeedQuality ?? fallbackFeedQuality(iqMarketType, iqSymbol, iqRawSize);
   const operatorMarketStatus = getOperatorMarketStatus(iqSourceMode, feedState, iqLoading, iqCandles.length);
+  const feedQualityNotice = getFeedQualityNotice(effectiveFeedQuality, iqRawSize, rankedAssets.recommended);
+  const selectedChartSource: ChartBindingSelectedSource = pocketProviderActive
+    ? 'PROVIDER_V2'
+    : POLARIUM_BASELINE_MODE
+    ? providerChartCandles.length > 0
+      ? 'POLARIUM_CHART_API'
+      : 'EMPTY'
+    : polariumConnected
+      ? 'POLARIUM_LIVE'
+      : iqCandles.length > 0
+        ? 'LEGACY_IQ_BLOCKED'
+        : 'UNKNOWN';
 
   useEffect(() => {
+    recordChartBindingTrace('SOURCE_SELECTED', {
+      active_id: providerChartActiveId,
+      raw_size: providerChartRawSize,
+      symbol: providerChartSymbol,
+      selected_source: selectedChartSource,
+      state_count: polariumLive.candles.length,
+      graph_prop_count: chartCandles.length,
+      reason: POLARIUM_BASELINE_MODE ? 'POLARIUM_BASELINE_MODE' : 'RUNTIME_SOURCE_SELECTION',
+      ...summarizeChartBindingCandles(chartCandles)
+    });
+    recordChartBindingTrace('GRAPH_PROPS_UPDATED', {
+      active_id: providerChartActiveId,
+      raw_size: providerChartRawSize,
+      symbol: providerChartSymbol,
+      selected_source: selectedChartSource,
+      state_count: polariumLive.candles.length,
+      graph_prop_count: chartCandles.length,
+      ...summarizeChartBindingCandles(chartCandles)
+    });
+  }, [polariumLive.candles.length, providerChartActiveId, providerChartCandles, providerChartRawSize, providerChartSymbol, selectedChartSource]);
+
+  useEffect(() => {
+    if (POLARIUM_BASELINE_MODE) return;
     logIqFlow('page_mounted', { marketType: iqMarketType, symbolSelected: Boolean(iqSymbol), rawSize: iqRawSize });
   }, []);
 
@@ -131,6 +220,7 @@ export default function MarketChart() {
   }, []);
 
   useEffect(() => {
+    if (POLARIUM_BASELINE_MODE) return;
     let cancelled = false;
     const controller = new AbortController();
     setIqError(null);
@@ -195,6 +285,7 @@ export default function MarketChart() {
   }, [iqAssetRetryKey, iqMarketType]);
 
   useEffect(() => {
+    if (POLARIUM_BASELINE_MODE) return;
     if (!iqSymbol) return;
     let cancelled = false;
     let inFlight = false;
@@ -384,6 +475,13 @@ export default function MarketChart() {
         const event = parseIqRealtimeStreamEvent(message);
         if (!event || !event.candle || !matchesIqRealtimeContext(event, expectedSymbol, expectedRawSize, iqMarketType)) return;
         if (event.sequence <= lastAppliedPushSequence) return;
+        recordFridayLatencyAudit('t5_frontend_received', {
+          provider: event.provider,
+          symbol: event.symbol,
+          raw_size: event.raw_size,
+          sequence: event.sequence,
+          backend_published_at: event.backend_published_at ?? null
+        });
         lastPushHeartbeatAt = Date.now();
         fallbackPollingEnabled = false;
         fallbackReported = false;
@@ -403,13 +501,30 @@ export default function MarketChart() {
         }));
         if (animationFrameId !== null) return;
         animationFrameId = window.requestAnimationFrame(() => {
+          recordFridayLatencyAudit('t8_request_animation_frame', {
+            symbol: expectedSymbol,
+            raw_size: expectedRawSize,
+            sequence: pendingPushEvent?.sequence ?? null
+          });
           animationFrameId = null;
           const latestPushEvent = pendingPushEvent;
           pendingPushEvent = null;
           if (!latestPushEvent?.candle || latestPushEvent.sequence <= lastAppliedPushSequence) return;
           lastAppliedPushSequence = latestPushEvent.sequence;
           const appliedAt = Date.now();
-          setIqCandles((previousCandles) => mergeIqOptionCandles(previousCandles, [latestPushEvent.candle as RealChartCandle]));
+          setIqCandles((previousCandles) =>
+            measureFridayLatencyAudit(
+              't6_frontend_merge_finished',
+              () => mergeIqOptionCandles(previousCandles, [latestPushEvent.candle as RealChartCandle]),
+              {
+                symbol: latestPushEvent.symbol,
+                raw_size: latestPushEvent.raw_size,
+                sequence: latestPushEvent.sequence,
+                previous_count: previousCandles.length,
+                incoming_count: 1
+              }
+            )
+          );
           setIqLastUpdateAt(new Date(appliedAt).toISOString());
           setIqPushStats((current) => ({
             ...current,
@@ -462,8 +577,64 @@ export default function MarketChart() {
   }, [iqMarketType, iqRawSize, iqSymbol]);
 
   useEffect(() => {
+    if (POLARIUM_BASELINE_MODE) return;
     logIqFlow('chart_props', { symbol: iqSymbol || null, rawSize: iqRawSize, candlesCount: iqCandles.length });
   }, [iqCandles.length, iqRawSize, iqSymbol]);
+
+  useEffect(() => {
+    if (POLARIUM_BASELINE_MODE) {
+      setIqFeedQuality(null);
+      return;
+    }
+    if (!iqSymbol) {
+      setIqFeedQuality(null);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const expectedSymbol = iqSymbol;
+    const expectedRawSize = iqRawSize;
+
+    async function loadFeedQuality() {
+      const params = new URLSearchParams({
+        symbol: expectedSymbol,
+        raw_size: String(expectedRawSize),
+        market_type: iqMarketType
+      });
+      try {
+        const payload = await fetchJsonWithTimeout(`${API_BASE_URL}/market/providers/iq-option/feed-quality?${params.toString()}`, {
+          signal: controller.signal,
+          timeoutMs: IQ_FEED_QUALITY_TIMEOUT_MS,
+          errorMessage: 'IQ Option feed quality'
+        });
+        if (cancelled) return;
+        const quality = parseIqFeedQualityResponse(payload);
+        if (!quality || quality.symbol !== expectedSymbol || quality.raw_size !== expectedRawSize || quality.market_type !== iqMarketType) {
+          return;
+        }
+        setIqFeedQuality(quality);
+        setIqAssetQualityByKey((current) => ({
+          ...current,
+          [feedQualityKey(quality.market_type, quality.symbol, quality.raw_size)]: quality
+        }));
+      } catch (error) {
+        if (!cancelled && !(error instanceof DOMException && error.name === 'AbortError')) {
+          logIqFlow('feed_quality_request_failed', { marketType: iqMarketType, symbol: expectedSymbol, rawSize: expectedRawSize, errorCode: sanitizeIqError(error) });
+        }
+      }
+    }
+
+    setIqFeedQuality(fallbackFeedQuality(iqMarketType, expectedSymbol, expectedRawSize));
+    void loadFeedQuality();
+    const intervalId = window.setInterval(() => {
+      void loadFeedQuality();
+    }, IQ_FEED_QUALITY_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(intervalId);
+    };
+  }, [iqMarketType, iqRawSize, iqSymbol]);
 
   useEffect(() => {
     if (!latest) return;
@@ -520,6 +691,7 @@ export default function MarketChart() {
             <p className="text-sm font-bold text-slate-400">Análise de mercado</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {pocketProviderActive ? <ProviderReadOnlyIndicator /> : <PolariumConnectionIndicator connected={polariumConnected} />}
             <MarketHealthBadge status={operatorMarketStatus} />
             <button
               type="button"
@@ -533,81 +705,160 @@ export default function MarketChart() {
 
         <div className="grid gap-2 lg:grid-cols-[minmax(150px,0.7fr)_minmax(240px,1.3fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)] lg:items-end">
           <Control label="Mercado">
-            <select
-              value={iqMarketType}
-              onChange={(event) => {
-                const nextMarketType = event.target.value as IQMarketType;
-                setIqMarketType(nextMarketType);
-                setIqAssets([]);
-                setIqSymbol(fallbackIqSymbolAfterAssetsFailure('', nextMarketType));
-              }}
-              className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
-            >
-              <option value="OTC">OTC</option>
-              <option value="REGULAR">Aberto</option>
-            </select>
+            {pocketProviderActive ? (
+              <select value="POCKET" disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value="POCKET">Pocket</option>
+              </select>
+            ) : POLARIUM_BASELINE_MODE || polariumConnected ? (
+              <select value="POLARIUM" disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value="POLARIUM">Polarium</option>
+              </select>
+            ) : (
+              <select
+                value={iqMarketType}
+                onChange={(event) => {
+                  const nextMarketType = event.target.value as IQMarketType;
+                  setIqMarketType(nextMarketType);
+                  setIqAssets([]);
+                  setIqSymbol(fallbackIqSymbolAfterAssetsFailure('', nextMarketType));
+                  setShowAllIqAssets(false);
+                }}
+                className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="OTC">OTC</option>
+                <option value="REGULAR">Aberto</option>
+              </select>
+            )}
           </Control>
 
           <Control label="Ativo">
-            <select
-              value={iqSymbol}
-              onChange={(event) => setIqSymbol(event.target.value)}
-              className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
-            >
-              {iqAssetLoading && <option value="">Carregando ativos...</option>}
-              {iqSymbol && !iqAssets.some((asset) => asset.symbol === iqSymbol) && (
-                <option value={iqSymbol}>{formatIqSymbol(iqSymbol)}</option>
-              )}
-              {!iqAssetLoading && !iqAssets.length && <option value="">{iqMarketType === 'REGULAR' ? 'Mercado regular fechado' : 'Nenhum ativo OTC disponível'}</option>}
-              {iqAssets.map((asset) => (
-                <option key={asset.symbol} value={asset.symbol}>
-                  {asset.display_name}
-                </option>
-              ))}
-            </select>
+            {pocketProviderActive ? (
+              <select value={providerChartSymbol} disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value={providerChartSymbol}>{providerChartSymbol}</option>
+              </select>
+            ) : POLARIUM_BASELINE_MODE || polariumConnected ? (
+              <select value={polariumSession.displayName} disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value={polariumSession.displayName}>{polariumSession.displayName}</option>
+              </select>
+            ) : (
+              <>
+                <select
+                  value={iqSymbol}
+                  onChange={(event) => setIqSymbol(event.target.value)}
+                  className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
+                >
+                  {iqAssetLoading && <option value="">Carregando ativos...</option>}
+                  {iqSymbol && !rankedAssets.visible.some((asset) => asset.symbol === iqSymbol) && (
+                    <option value={iqSymbol}>{formatIqSymbol(iqSymbol)}</option>
+                  )}
+                  {!iqAssetLoading && !iqAssets.length && <option value="">{iqMarketType === 'REGULAR' ? 'Mercado regular fechado' : 'Nenhum ativo OTC disponível'}</option>}
+                  {rankedAssets.current.length > 0 && (
+                    <optgroup label="ATIVO ATUAL">
+                      {rankedAssets.current.map((asset) => (
+                        <option key={`current-${asset.symbol}`} value={asset.symbol}>
+                          {asset.display_name} - {formatFeedQualityLabel(asset.quality.classification)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {rankedAssets.recommended.length > 0 && (
+                    <optgroup label={`RECOMENDADOS PARA ${formatRawSize(iqRawSize)}`}>
+                      {rankedAssets.recommended.map((asset) => (
+                        <option key={`recommended-${asset.symbol}`} value={asset.symbol}>
+                          {asset.display_name} - {formatFeedQualityLabel(asset.quality.classification)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {rankedAssets.checking.length > 0 && (
+                    <optgroup label="AINDA NAO AVALIADOS">
+                      {rankedAssets.checking.map((asset) => (
+                        <option key={`checking-${asset.symbol}`} value={asset.symbol}>
+                          {asset.display_name} - Ainda não avaliado
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {showAllIqAssets && rankedAssets.limited.length > 0 && (
+                    <optgroup label="LIMITADOS">
+                      {rankedAssets.limited.map((asset) => (
+                        <option key={`limited-${asset.symbol}`} value={asset.symbol}>
+                          {asset.display_name} - {formatFeedQualityLabel(asset.quality.classification)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {showAllIqAssets && rankedAssets.unavailable.length > 0 && (
+                    <optgroup label="INDISPONIVEIS">
+                      {rankedAssets.unavailable.map((asset) => (
+                        <option key={`unavailable-${asset.symbol}`} value={asset.symbol}>
+                          {asset.display_name} - {formatFeedQualityLabel(asset.quality.classification)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {!iqAssetLoading && iqAssets.length > 0 && rankedAssets.visible.length === 0 && <option value={iqSymbol}>{formatIqSymbol(iqSymbol)}</option>}
+                </select>
+                <label className="mt-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showAllIqAssets}
+                    onChange={(event) => setShowAllIqAssets(event.target.checked)}
+                    className="h-3.5 w-3.5 accent-cyan-300"
+                  />
+                  Mostrar todos os ativos
+                </label>
+              </>
+            )}
           </Control>
 
           <Control label="Timeframe">
-            <select
-              value={iqRawSize}
-              onChange={(event) => setIqRawSize(Number(event.target.value))}
-              className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
-            >
-              {IQ_TIMEFRAMES.map((rawSize) => (
-                <option key={rawSize} value={rawSize}>
-                  {formatRawSize(rawSize)}
-                </option>
-              ))}
-            </select>
+            {pocketProviderActive ? (
+              <select value={providerChartRawSize ?? ''} disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value={providerChartRawSize ?? ''}>{providerChartRawSize ? formatRawSize(providerChartRawSize) : 'Não disponível'}</option>
+              </select>
+            ) : POLARIUM_BASELINE_MODE || polariumConnected ? (
+              <select value={polariumSession.rawSize ?? ''} disabled className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none">
+                <option value={polariumSession.rawSize ?? ''}>{polariumSession.timeframe ?? 'Não disponível'}</option>
+              </select>
+            ) : (
+              <select
+                value={iqRawSize}
+                onChange={(event) => setIqRawSize(Number(event.target.value))}
+                className="h-9 w-full rounded-xl border border-white/10 bg-[#080a2a] px-3 text-sm font-black text-white outline-none focus:border-cyan-300/60"
+              >
+                {IQ_TIMEFRAMES.map((rawSize) => (
+                  <option key={rawSize} value={rawSize}>
+                    {formatRawSize(rawSize)}
+                  </option>
+                ))}
+              </select>
+            )}
           </Control>
 
           <div className="rounded-2xl border border-white/10 bg-[#080a2a] px-3 py-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Próxima vela</p>
-            <p className="mt-0.5 text-sm font-black text-cyan-100">{formatFeedCountdown(feedState)}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{pocketProviderActive ? 'Readiness' : POLARIUM_BASELINE_MODE || polariumConnected ? 'Histórico' : 'Próxima vela'}</p>
+            <p className="mt-0.5 text-sm font-black text-cyan-100">{pocketProviderActive ? polariumLive.readiness ?? 'Aguardando histórico' : POLARIUM_BASELINE_MODE || polariumConnected ? polariumHistoryLabel : formatFeedCountdown(feedState)}</p>
           </div>
         </div>
       </section>
 
       {operatorMarketStatus.notice && <MarketNotice status={operatorMarketStatus} />}
+      {feedQualityNotice && <FeedQualityNotice notice={feedQualityNotice} />}
 
       <section className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)]">
         <div className="min-w-0">
-          {iqSymbol && iqRawSize ? (
+          {chartActiveId !== null && chartRawSize !== null || pocketProviderActive && chartRawSize !== null ? (
             <RealCandleChart
-              activeId={null}
-              symbol={displayedSymbol !== 'Não disponível' ? displayedSymbol : null}
-              rawSize={iqRawSize}
-              candles={iqCandles}
+              activeId={chartActiveId}
+              symbol={chartSymbol !== 'Não disponível' ? chartSymbol : null}
+              rawSize={chartRawSize}
+              candles={chartCandles}
               compact
               chartClassName="h-[calc(100dvh-218px)] min-h-[420px] max-h-[700px]"
             />
           ) : (
-            <IqEmptyChart
-              loading={iqAssetLoading || iqLoading}
-              error={iqError}
-              marketType={iqMarketType}
-              onRetry={() => setIqAssetRetryKey((current) => current + 1)}
-            />
+            <PolariumEmptyChart />
           )}
         </div>
 
@@ -617,6 +868,9 @@ export default function MarketChart() {
             selectedStrategy={selectedStrategy}
             selectedStrategyId={selectedStrategyId}
             onSelectStrategy={setSelectedStrategyId}
+            feedQuality={effectiveFeedQuality}
+            rawSize={iqRawSize}
+            sessionContext={polariumSession}
           />
 
           {fridayUiMode === 'DEVELOPER' && (
@@ -649,6 +903,17 @@ export default function MarketChart() {
                 <InfoLine label="Último movimento" value={movementSummary.lastMovementLabel} />
                 <InfoLine label="Movimentos" value={movementSummary.rateLabel} />
                 <InfoLine label="Feed" value={formatFeedStatus(feedState, iqLastUpdateAt, iqLoading)} />
+                <InfoLine label="Classificação" value={`${formatFeedQualityLabel(effectiveFeedQuality.classification)} - ${effectiveFeedQuality.reason}`} />
+                <InfoLine label="Janela" value={`${formatMilliseconds(effectiveFeedQuality.measurement_window_ms)} / ${formatMilliseconds(effectiveFeedQuality.minimum_window_ms)}`} />
+                <InfoLine label="p50 movimento" value={formatNullableMilliseconds(effectiveFeedQuality.p50_movement_interval_ms)} />
+                <InfoLine label="p95 movimento" value={formatNullableMilliseconds(effectiveFeedQuality.p95_movement_interval_ms)} />
+                <InfoLine label="Maior gap" value={formatNullableMilliseconds(effectiveFeedQuality.maximum_movement_gap_ms)} />
+                <InfoLine label="Movimentos por segundo" value={formatMovementRate(effectiveFeedQuality.movement_rate)} />
+                <InfoLine label="Idade do candle" value={effectiveFeedQuality.stale_age_seconds === null ? 'Não disponível' : `${effectiveFeedQuality.stale_age_seconds}s`} />
+                <InfoLine label="Primeiro evento" value={formatNullableMilliseconds(effectiveFeedQuality.first_event_latency_ms)} />
+                <InfoLine label="Eventos recebidos" value={String(effectiveFeedQuality.events_received)} />
+                <InfoLine label="Erros" value={String(effectiveFeedQuality.errors)} />
+                <InfoLine label="Reconexões" value={String(effectiveFeedQuality.reconnects)} />
               </CompactPanel>
 
               <CompactPanel title="Readiness DEV">
@@ -686,6 +951,15 @@ export default function MarketChart() {
   );
 }
 
+function ProviderReadOnlyIndicator() {
+  return (
+    <div className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 text-[10px] font-black uppercase tracking-widest text-cyan-100">
+      <span className="h-2 w-2 rounded-full bg-cyan-300" />
+      Provider: Pocket — Read Only
+    </div>
+  );
+}
+
 function Control({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
@@ -699,15 +973,23 @@ function FridayStrategyEnginePanel({
   strategies,
   selectedStrategy,
   selectedStrategyId,
-  onSelectStrategy
+  onSelectStrategy,
+  feedQuality,
+  rawSize,
+  sessionContext
 }: {
   strategies: FridayStrategyDefinition[];
   selectedStrategy: FridayStrategyDefinition | null;
   selectedStrategyId: string;
   onSelectStrategy: (strategyId: string) => void;
+  feedQuality: IQFeedQualitySnapshot;
+  rawSize: number;
+  sessionContext: PolariumSessionContext;
 }) {
   const confluenceCount = selectedStrategy?.confluences.length ?? 0;
   const confluenceLabel = selectedStrategy ? `${confluenceCount} avaliadas` : '0 avaliadas';
+  const blockedReason = sessionContext.connectionStatus === 'ONLINE' && sessionContext.analysisBlocked ? formatPolariumAnalysisReadiness(sessionContext) : null;
+  const strategyReadiness = blockedReason ? 'BLOQUEADA' : getStrategyReadinessFromFeedQuality(feedQuality.classification);
   return (
     <section className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-3">
       <div className="flex items-start justify-between gap-3">
@@ -742,12 +1024,15 @@ function FridayStrategyEnginePanel({
 
       <div className="mt-3 grid gap-2">
         <InfoLine label="Estratégia ativa" value={selectedStrategy?.name ?? 'Nenhuma selecionada'} />
-        <InfoLine label="Status" value={selectedStrategy ? formatStrategyStatus(selectedStrategy.status) : 'Aguardando configuração'} />
+        <InfoLine label="Status" value={blockedReason ?? (selectedStrategy ? formatStrategyStatus(selectedStrategy.status) : 'Aguardando configuração')} />
+        {sessionContext.connectionStatus === 'ONLINE' && <InfoLine label="Histórico" value={formatPolariumHistoryProgress(sessionContext)} />}
+        <InfoLine label="Feed" value={blockedReason ?? formatFeedQualityMessage(feedQuality.classification, rawSize)} />
+        <InfoLine label="Readiness" value={strategyReadiness} />
         <InfoLine label="Confluências" value={confluenceLabel} />
         <InfoLine label="Decisão" value="Nenhuma análise ativa" />
         {selectedStrategy && (
           <>
-            <InfoLine label="Readiness" value={formatStrategyReadiness(selectedStrategy.readiness)} />
+            <InfoLine label="Estratégia" value={formatStrategyReadiness(selectedStrategy.readiness)} />
             <InfoLine label="Mercados suportados" value={selectedStrategy.supportedMarkets.join(', ')} />
             <InfoLine label="Timeframes suportados" value={selectedStrategy.supportedTimeframes.map(formatRawSize).join(', ')} />
           </>
@@ -758,6 +1043,18 @@ function FridayStrategyEnginePanel({
         Nenhuma análise ativa. Nenhum cálculo operacional, estatística ou decisão é gerado nesta fundação.
       </p>
     </section>
+  );
+}
+
+function PolariumConnectionIndicator({ connected }: { connected: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wide ${
+        connected ? 'border-emerald-300/25 text-emerald-200' : 'border-slate-500/25 text-slate-400'
+      }`}
+    >
+      {connected ? '● POLARIUM CONECTADA' : '● POLARIUM OFFLINE'}
+    </div>
   );
 }
 
@@ -776,6 +1073,15 @@ function MarketNotice({ status }: { status: OperatorMarketStatus }) {
     <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] px-3 py-2">
       <p className="text-sm font-black text-amber-100">{status.notice.title}</p>
       <p className="mt-0.5 text-xs font-bold text-amber-100/75">{status.notice.description}</p>
+    </section>
+  );
+}
+
+function FeedQualityNotice({ notice }: { notice: { title: string; description: string } }) {
+  return (
+    <section className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] px-3 py-2">
+      <p className="text-sm font-black text-amber-100">{notice.title}</p>
+      <p className="mt-0.5 text-xs font-bold text-amber-100/75">{notice.description}</p>
     </section>
   );
 }
@@ -901,6 +1207,19 @@ function IqEmptyChart({ loading, error, marketType, onRetry }: { loading: boolea
   );
 }
 
+function PolariumEmptyChart() {
+  return (
+    <div className="flex h-[calc(100dvh-218px)] min-h-[420px] max-h-[700px] items-center justify-center rounded-2xl border border-cyan-400/15 bg-[#070920] px-6 text-center">
+      <div>
+        <p className="text-sm font-black text-white">Aguardando dados reais da Polarium...</p>
+        <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-400">
+          Abra a Polarium no Chrome dedicado e selecione um ativo/timeframe. A Friday usará somente a Chart API alimentada pelo CandleStore.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 async function ensureIqOptionConnected(promiseRef: { current: Promise<void> | null }) {
   if (promiseRef.current) {
     return promiseRef.current;
@@ -961,6 +1280,41 @@ export function parseIqCandlesResponse(payload: unknown): { count: number; candl
   return { count: Number.isFinite(countValue) ? countValue : candles.length, candles };
 }
 
+export function parseIqFeedQualityResponse(payload: unknown): IQFeedQualitySnapshot | null {
+  const record = asRecord(payload);
+  const quality = asRecord(record?.quality);
+  if (!quality) return null;
+  const classification = quality.classification;
+  if (!isFeedQualityLevel(classification)) return null;
+  const marketType = quality.market_type === 'REGULAR' ? 'REGULAR' : 'OTC';
+  const sourceMode = isIqSourceMode(quality.source_mode) ? quality.source_mode : 'CHECKING';
+  return {
+    market_type: marketType,
+    symbol: String(quality.symbol ?? ''),
+    raw_size: Number(quality.raw_size),
+    classification,
+    reason: String(quality.reason ?? ''),
+    first_event_latency_ms: nullableNumber(quality.first_event_latency_ms),
+    last_event_at: nullableNumber(quality.last_event_at),
+    last_movement_at: nullableNumber(quality.last_movement_at),
+    last_candle_timestamp: nullableNumber(quality.last_candle_timestamp),
+    events_received: Number(quality.events_received ?? 0),
+    ohlc_changes: Number(quality.ohlc_changes ?? 0),
+    identical_reads: Number(quality.identical_reads ?? 0),
+    movement_rate: Number(quality.movement_rate ?? 0),
+    average_movement_interval_ms: nullableNumber(quality.average_movement_interval_ms),
+    p50_movement_interval_ms: nullableNumber(quality.p50_movement_interval_ms),
+    p95_movement_interval_ms: nullableNumber(quality.p95_movement_interval_ms),
+    maximum_movement_gap_ms: nullableNumber(quality.maximum_movement_gap_ms),
+    stale_age_seconds: nullableNumber(quality.stale_age_seconds),
+    source_mode: sourceMode,
+    errors: Number(quality.errors ?? 0),
+    reconnects: Number(quality.reconnects ?? 0),
+    measurement_window_ms: Number(quality.measurement_window_ms ?? 0),
+    minimum_window_ms: Number(quality.minimum_window_ms ?? 0)
+  };
+}
+
 export function parseIqSourceMode(payload: unknown): IQSourceMode {
   const record = asRecord(payload);
   const sourceMode = record?.source_mode;
@@ -968,6 +1322,19 @@ export function parseIqSourceMode(payload: unknown): IQSourceMode {
     return sourceMode;
   }
   return 'CHECKING';
+}
+
+function isIqSourceMode(value: unknown): value is IQSourceMode {
+  return value === 'NEAR_REALTIME' || value === 'SNAPSHOT' || value === 'STALE' || value === 'NO_DATA' || value === 'CHECKING';
+}
+
+function isFeedQualityLevel(value: unknown): value is IQFeedQualityLevel {
+  return value === 'EXCELLENT' || value === 'GOOD' || value === 'LIMITED' || value === 'STALE' || value === 'NO_DATA' || value === 'CHECKING';
+}
+
+function nullableNumber(value: unknown): number | null {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
 }
 
 export function parseIqRealtimeStreamEvent(message: MessageEvent): IQRealtimeStreamEvent | null {
@@ -1020,6 +1387,93 @@ export function chooseIqSymbol(currentSymbol: string, assets: IQAsset[], marketT
   const preferredSymbol = marketType === 'OTC' ? 'EURUSD-OTC' : 'EURUSD';
   const preferred = assets.find((asset) => asset.symbol === preferredSymbol && asset.is_open);
   return preferred?.symbol ?? assets.find((asset) => asset.is_open)?.symbol ?? '';
+}
+
+type RankedIqAsset = IQAsset & { quality: IQFeedQualitySnapshot };
+
+export function rankIqAssets(
+  assets: IQAsset[],
+  qualityByKey: Record<string, IQFeedQualitySnapshot>,
+  marketType: IQMarketType,
+  rawSize: number,
+  currentSymbol: string,
+  showAll: boolean
+) {
+  const all = assets
+    .map((asset) => ({
+      ...asset,
+      quality: qualityByKey[feedQualityKey(marketType, asset.symbol, rawSize)] ?? fallbackFeedQuality(marketType, asset.symbol, rawSize)
+    }))
+    .sort(compareRankedIqAssets);
+  const recommended = all.filter((asset) => asset.quality.classification === 'EXCELLENT' || asset.quality.classification === 'GOOD');
+  const checking = all.filter((asset) => asset.quality.classification === 'CHECKING');
+  const current = all.filter(
+    (asset) =>
+      asset.symbol === currentSymbol &&
+      asset.quality.classification !== 'EXCELLENT' &&
+      asset.quality.classification !== 'GOOD' &&
+      asset.quality.classification !== 'CHECKING'
+  );
+  const currentSymbols = new Set(current.map((asset) => asset.symbol));
+  const limited = all.filter((asset) => !currentSymbols.has(asset.symbol) && asset.quality.classification === 'LIMITED');
+  const unavailable = all.filter((asset) => !currentSymbols.has(asset.symbol) && (asset.quality.classification === 'STALE' || asset.quality.classification === 'NO_DATA'));
+  const visible = showAll ? [...current, ...recommended, ...checking, ...limited, ...unavailable] : [...current, ...recommended, ...checking];
+  return { all, visible, recommended, checking, limited, unavailable, current };
+}
+
+function compareRankedIqAssets(left: RankedIqAsset, right: RankedIqAsset) {
+  const qualityDelta = feedQualityOrder(left.quality.classification) - feedQualityOrder(right.quality.classification);
+  if (qualityDelta !== 0) return qualityDelta;
+  const movementDelta = right.quality.movement_rate - left.quality.movement_rate;
+  if (movementDelta !== 0) return movementDelta;
+  return left.display_name.localeCompare(right.display_name);
+}
+
+function feedQualityOrder(classification: IQFeedQualityLevel) {
+  if (classification === 'EXCELLENT') return 0;
+  if (classification === 'GOOD') return 1;
+  if (classification === 'CHECKING') return 2;
+  if (classification === 'LIMITED') return 3;
+  if (classification === 'STALE') return 4;
+  return 5;
+}
+
+function feedQualityKey(marketType: IQMarketType, symbol: string, rawSize: number) {
+  return `${marketType}:${symbol}:${rawSize}`;
+}
+
+function fallbackFeedQuality(marketType: IQMarketType, symbol: string, rawSize: number): IQFeedQualitySnapshot {
+  return {
+    market_type: marketType,
+    symbol,
+    raw_size: rawSize,
+    classification: 'CHECKING',
+    reason: 'Avaliando qualidade do ativo',
+    first_event_latency_ms: null,
+    last_event_at: null,
+    last_movement_at: null,
+    last_candle_timestamp: null,
+    events_received: 0,
+    ohlc_changes: 0,
+    identical_reads: 0,
+    movement_rate: 0,
+    average_movement_interval_ms: null,
+    p50_movement_interval_ms: null,
+    p95_movement_interval_ms: null,
+    maximum_movement_gap_ms: null,
+    stale_age_seconds: null,
+    source_mode: 'CHECKING',
+    errors: 0,
+    reconnects: 0,
+    measurement_window_ms: 0,
+    minimum_window_ms: minimumFeedQualityWindowMs(rawSize)
+  };
+}
+
+function minimumFeedQualityWindowMs(rawSize: number) {
+  if (rawSize <= 60) return 15_000;
+  if (rawSize <= 300) return 20_000;
+  return 30_000;
 }
 
 function fallbackIqSymbolAfterAssetsFailure(currentSymbol: string, marketType: IQMarketType) {
@@ -1334,6 +1788,63 @@ function formatSourceDetail(sourceMode: IQSourceMode) {
   return 'Aguardando leitura';
 }
 
+function formatFeedQualityLabel(classification: IQFeedQualityLevel) {
+  if (classification === 'EXCELLENT') return 'Excelente';
+  if (classification === 'GOOD') return 'Bom';
+  if (classification === 'LIMITED') return 'Limitado';
+  if (classification === 'STALE') return 'Dados atrasados';
+  if (classification === 'NO_DATA') return 'Sem dados';
+  return 'Verificando';
+}
+
+function formatFeedQualityMessage(classification: IQFeedQualityLevel, rawSize: number) {
+  const timeframe = formatRawSize(rawSize);
+  if (classification === 'EXCELLENT') return `Feed excelente para ${timeframe}`;
+  if (classification === 'GOOD') return `Feed adequado para ${timeframe}`;
+  if (classification === 'LIMITED') return 'Feed limitado para este timeframe';
+  if (classification === 'STALE') return 'Dados atrasados. Escolha outro ativo';
+  if (classification === 'NO_DATA') return 'Sem dados disponíveis';
+  return 'Avaliando qualidade do ativo';
+}
+
+function formatPolariumHistoryProgress(sessionContext: PolariumSessionContext) {
+  if (sessionContext.historyState === 'READY') return 'READY';
+  if (!sessionContext.historyRequired) return '0/0';
+  return `${sessionContext.historyProgress}/${sessionContext.historyRequired}`;
+}
+
+function formatPolariumAnalysisReadiness(sessionContext: PolariumSessionContext) {
+  if (sessionContext.analysisBlockReason === 'POLARIUM_SYMBOL_UNRESOLVED') return 'ATIVO NÃO IDENTIFICADO';
+  if (sessionContext.historyState === 'BOOTSTRAPPING') return 'CARREGANDO HISTÓRICO';
+  if (sessionContext.historyState === 'LIMITED' || sessionContext.historyState === 'NO_HISTORY') return 'HISTÓRICO INSUFICIENTE';
+  if (sessionContext.historyState === 'STALE') return 'HISTÓRICO DESATUALIZADO';
+  return 'PRONTO PARA ANÁLISE';
+}
+
+function getStrategyReadinessFromFeedQuality(classification: IQFeedQualityLevel) {
+  if (classification === 'EXCELLENT' || classification === 'GOOD') return 'Feed pronto';
+  if (classification === 'LIMITED') return 'Análise limitada';
+  if (classification === 'STALE' || classification === 'NO_DATA') return 'Análise bloqueada';
+  return 'Aguardando feed';
+}
+
+function getFeedQualityNotice(quality: IQFeedQualitySnapshot, rawSize: number, recommended: RankedIqAsset[]) {
+  if (quality.classification === 'EXCELLENT' || quality.classification === 'GOOD' || quality.classification === 'CHECKING') {
+    return null;
+  }
+  const alternatives = recommended.slice(0, 3).map((asset) => asset.symbol).join(', ');
+  if (quality.classification === 'LIMITED') {
+    return {
+      title: `Feed limitado para ${formatRawSize(rawSize)}`,
+      description: alternatives ? `Melhores opções disponíveis: ${alternatives}.` : 'Mantenha a análise em observação antes de usar este ativo.'
+    };
+  }
+  return {
+    title: quality.classification === 'STALE' ? 'Este ativo perdeu qualidade' : 'Sem dados para este ativo',
+    description: alternatives ? `Escolha outro ativo. Melhores opções disponíveis: ${alternatives}.` : 'Ative Mostrar todos para revisar outros ativos desta sessão.'
+  };
+}
+
 function formatDeliveryTitle(deliveryState: IQDeliveryState) {
   if (deliveryState === 'SSE') return 'SSE';
   if (deliveryState === 'POLLING_FALLBACK') return 'POLLING 1s';
@@ -1406,6 +1917,10 @@ function formatMilliseconds(value: number) {
   if (!Number.isFinite(value)) return 'Não disponível';
   if (value < 1000) return `${Math.round(value)}ms`;
   return `${(value / 1000).toFixed(1).replace('.', ',')}s`;
+}
+
+function formatNullableMilliseconds(value: number | null) {
+  return value === null ? 'Não disponível' : formatMilliseconds(value);
 }
 
 function percentile(sortedValues: number[], ratio: number) {

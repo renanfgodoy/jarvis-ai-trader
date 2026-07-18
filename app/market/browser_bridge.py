@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Any
 
 from app.market.browser_bridge_payload_adapter import adapt_browser_bridge_payload
@@ -118,6 +119,8 @@ class BrowserBridgeTrace:
     candle_store: dict[str, Any] | None = None
     chart_api_probe: dict[str, Any] | None = None
     payload_comparison: dict[str, Any] | None = None
+    latency_timeline: dict[str, Any] | None = None
+    latency_segments_ms: dict[str, Any] | None = None
 
     def sanitized(self) -> dict[str, Any]:
         return {
@@ -130,6 +133,8 @@ class BrowserBridgeTrace:
             "candle_store": self.candle_store,
             "chart_api_probe": self.chart_api_probe,
             "payload_comparison": self.payload_comparison,
+            "latency_timeline": self.latency_timeline,
+            "latency_segments_ms": self.latency_segments_ms,
         }
 
 
@@ -635,6 +640,7 @@ class BrowserBridgeStatus:
     historical_transport_shapes: dict[str, HistoricalTransportShape] = field(default_factory=dict)
     runtime_store_discovery: RuntimeStoreDiscovery = field(default_factory=RuntimeStoreDiscovery)
     runtime_store_candidates: dict[str, RuntimeStoreCandidate] = field(default_factory=dict)
+    latency_samples: list[dict[str, Any]] = field(default_factory=list)
 
     def sanitized(self) -> dict[str, Any]:
         return {
@@ -664,6 +670,7 @@ class BrowserBridgeStatus:
             "historical_transport_shapes": [shape.sanitized() for shape in self.historical_transport_shapes.values()],
             "runtime_store_discovery": self.runtime_store_discovery.sanitized(),
             "runtime_store_candidates": [candidate.sanitized() for candidate in self.runtime_store_candidates.values()],
+            "latency_audit": _latency_audit_summary(self.latency_samples),
         }
 
 
@@ -685,6 +692,7 @@ class AuthorizedBrowserBridgeRuntime:
         return self._status.bridge_active
 
     def ingest(self, payload: dict[str, Any], *, payload_size: int) -> BrowserBridgeResult:
+        t0_event_received = _monotonic_ms()
         self._status.received_count += 1
         self._status.last_trace = BrowserBridgeTrace(event_received=_trace_payload(payload))
         if payload_size > MAX_PAYLOAD_BYTES:
@@ -723,6 +731,7 @@ class AuthorizedBrowserBridgeRuntime:
             self._record_first_candles_received(payload)
 
         normalized = _normalize_for_pipeline(event_name, payload)
+        t1_parser_finished = _monotonic_ms()
         self._status.last_trace.adapter_accepted = True
         self._status.last_trace.payload_converted = _trace_payload(normalized)
         self._status.last_trace.pipeline_input = _trace_payload(normalized)
@@ -737,6 +746,16 @@ class AuthorizedBrowserBridgeRuntime:
         self._status.data_classification = POLARIUM_AUTHORIZED_BROWSER_LABEL
 
         if event_name not in PIPELINE_EVENTS:
+            t4_response_ready = _monotonic_ms()
+            self._record_latency_sample(
+                event_name,
+                t0_event_received=t0_event_received,
+                t1_parser_finished=t1_parser_finished,
+                t2_runtime_received=t1_parser_finished,
+                t3_candle_store_updated=t1_parser_finished,
+                t4_response_ready=t4_response_ready,
+                pipeline_processed=False,
+            )
             return BrowserBridgeResult(
                 accepted=True,
                 event_name=event_name,
@@ -749,11 +768,23 @@ class AuthorizedBrowserBridgeRuntime:
                 error_code=None,
             )
 
+        t2_runtime_received = _monotonic_ms()
         result = self._pipeline.process(normalized)
+        t3_candle_store_updated = _monotonic_ms()
         self._record_pipeline_result(result)
         self._record_trace_result(payload, normalized, result)
         if event_name == "first-candles":
             self._record_first_candles_pipeline_result(result)
+        t4_response_ready = _monotonic_ms()
+        self._record_latency_sample(
+            event_name,
+            t0_event_received=t0_event_received,
+            t1_parser_finished=t1_parser_finished,
+            t2_runtime_received=t2_runtime_received,
+            t3_candle_store_updated=t3_candle_store_updated,
+            t4_response_ready=t4_response_ready,
+            pipeline_processed=True,
+        )
         return BrowserBridgeResult(
             accepted=True,
             event_name=event_name,
@@ -765,6 +796,40 @@ class AuthorizedBrowserBridgeRuntime:
             rejected=result.rejected,
             error_code=None if result.success else "PIPELINE_REJECTED",
         )
+
+    def _record_latency_sample(
+        self,
+        event_name: str,
+        *,
+        t0_event_received: float,
+        t1_parser_finished: float,
+        t2_runtime_received: float,
+        t3_candle_store_updated: float,
+        t4_response_ready: float,
+        pipeline_processed: bool,
+    ) -> None:
+        timeline = {
+            "t0_event_received_ms": _round_ms(t0_event_received),
+            "t1_parser_finished_ms": _round_ms(t1_parser_finished),
+            "t2_runtime_received_ms": _round_ms(t2_runtime_received),
+            "t3_candle_store_updated_ms": _round_ms(t3_candle_store_updated),
+            "t4_response_ready_ms": _round_ms(t4_response_ready),
+        }
+        segments = {
+            "event_to_parser_ms": _round_ms(t1_parser_finished - t0_event_received),
+            "parser_to_runtime_ms": _round_ms(t2_runtime_received - t1_parser_finished),
+            "runtime_to_store_ms": _round_ms(t3_candle_store_updated - t2_runtime_received),
+            "store_to_response_ms": _round_ms(t4_response_ready - t3_candle_store_updated),
+            "backend_total_ms": _round_ms(t4_response_ready - t0_event_received),
+        }
+        sample = {
+            "event_name": event_name,
+            "pipeline_processed": pipeline_processed,
+            **segments,
+        }
+        self._status.last_trace.latency_timeline = timeline
+        self._status.last_trace.latency_segments_ms = segments
+        self._status.latency_samples = [*self._status.latency_samples[-49:], sample]
 
     def _reject(self, error_code: str, event_name: str | None) -> BrowserBridgeResult:
         self._status.rejected_count += 1
@@ -1104,6 +1169,50 @@ class AuthorizedBrowserBridgeRuntime:
 
 def _normalize_for_pipeline(event_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     return adapt_browser_bridge_payload(event_name, payload)
+
+
+def _monotonic_ms() -> float:
+    return perf_counter() * 1000
+
+
+def _round_ms(value: float) -> float:
+    return round(value, 3)
+
+
+def _latency_audit_summary(samples: list[dict[str, Any]]) -> dict[str, Any]:
+    segment_names = (
+        "event_to_parser_ms",
+        "parser_to_runtime_ms",
+        "runtime_to_store_ms",
+        "store_to_response_ms",
+        "backend_total_ms",
+    )
+    return {
+        "sample_count": len(samples),
+        "latest": samples[-1] if samples else None,
+        "segments": {name: _latency_metric_summary(samples, name) for name in segment_names},
+    }
+
+
+def _latency_metric_summary(samples: list[dict[str, Any]], metric: str) -> dict[str, float | None]:
+    values = sorted(value for sample in samples if isinstance((value := sample.get(metric)), (int, float)))
+    if not values:
+        return {"mean_ms": None, "p50_ms": None, "p95_ms": None}
+    return {
+        "mean_ms": _round_ms(sum(values) / len(values)),
+        "p50_ms": _round_ms(_percentile(values, 0.50)),
+        "p95_ms": _round_ms(_percentile(values, 0.95)),
+    }
+
+
+def _percentile(values: list[float], percentile: float) -> float:
+    if len(values) == 1:
+        return values[0]
+    index = (len(values) - 1) * percentile
+    lower = int(index)
+    upper = min(lower + 1, len(values) - 1)
+    weight = index - lower
+    return values[lower] * (1 - weight) + values[upper] * weight
 
 
 def _runtime_store_discovery_from_payload(payload: dict[str, Any]) -> RuntimeStoreDiscovery:

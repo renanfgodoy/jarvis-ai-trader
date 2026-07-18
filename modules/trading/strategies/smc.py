@@ -1,0 +1,2 @@
+class SMCStrategy:
+    name = "SMC"

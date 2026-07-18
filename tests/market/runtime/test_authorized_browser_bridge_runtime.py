@@ -411,6 +411,27 @@ def test_bridge_accepts_candle_generated_and_updates_chart_api() -> None:
     assert status["symbol_source"] is None
 
 
+def test_bridge_status_exposes_sanitized_latency_audit_for_pipeline_event() -> None:
+    response = post_bridge(candle_generated_payload())
+
+    assert response.status_code == 200
+
+    status = client.get("/api/v1/polarium/browser-bridge/status").json()
+    latest = status["latency_audit"]["latest"]
+    segments = status["latency_audit"]["segments"]
+    trace = status["last_trace"]
+
+    assert status["latency_audit"]["sample_count"] == 1
+    assert latest["event_name"] == "candle-generated"
+    assert latest["pipeline_processed"] is True
+    assert latest["backend_total_ms"] >= 0
+    assert segments["backend_total_ms"]["p50_ms"] is not None
+    assert "t0_event_received_ms" in trace["latency_timeline"]
+    assert "runtime_to_store_ms" in trace["latency_segments_ms"]
+    assert "token" not in str(status["latency_audit"]).lower()
+    assert "cookie" not in str(status["latency_audit"]).lower()
+
+
 def test_bridge_adapts_real_candle_generated_msg_shape_to_pipeline_and_chart_api() -> None:
     response = post_bridge(
         {

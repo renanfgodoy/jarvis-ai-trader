@@ -1,13 +1,13 @@
-import { BrainCircuit, History, Home, LineChart, Settings } from 'lucide-react';
+import { BrainCircuit, History, Home, Settings, ShieldCheck, TerminalSquare } from 'lucide-react';
 import type { AppRoute } from '../../hooks/useAppNavigation';
 import BrandLogo from '../BrandLogo';
 
 const navigation: Array<{ route: AppRoute; label: string; icon: React.ElementType; group?: string }> = [
   { route: '/dashboard', label: 'Dashboard', icon: Home },
-  { route: '/markets', label: 'Markets', icon: LineChart },
-  { route: '/market-chart', label: 'Real Chart', icon: LineChart },
-  { route: '/analysis', label: 'AI Analysis', icon: BrainCircuit },
-  { route: '/replay', label: 'Replay', icon: History },
+  { route: '/vision', label: 'Friday Vision', icon: BrainCircuit },
+  { route: '/history', label: 'Histórico', icon: History },
+  { route: '/risk', label: 'Gestão de Risco', icon: ShieldCheck },
+  { route: '/developer/core-demo', label: 'Developer Console', icon: TerminalSquare },
   { route: '/settings', label: 'Settings', icon: Settings }
 ];
 

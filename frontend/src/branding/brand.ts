@@ -3,11 +3,11 @@ import logoUrl from './assets/friday-trade-logo.svg';
 import symbolUrl from './assets/friday-trade-symbol.svg';
 
 export const brand = {
-  name: 'Friday Trade',
+  name: 'Friday AI Platform',
   shortName: 'Friday',
-  tagline: 'Trade Smarter.',
-  descriptor: 'Professional AI Trading Platform',
-  subtitle: 'Professional AI Trading Platform',
+  tagline: 'Intelligence for better decisions.',
+  descriptor: 'Modular AI Platform',
+  subtitle: 'Modular AI Platform',
   version: '0.24.0',
   environment: 'Desenvolvimento',
   operator: 'Renan Godoy',
@@ -18,13 +18,13 @@ export const brand = {
     favicon: faviconUrl
   },
   logo: {
-    wordmark: 'Friday Trade',
-    descriptor: 'Trade Smarter.',
-    ariaLabel: 'Friday Trade logo'
+    wordmark: 'Friday AI Platform',
+    descriptor: 'Intelligence for better decisions.',
+    ariaLabel: 'Friday AI Platform logo'
   },
   icon: {
     symbol: 'friday-trade-symbol',
-    ariaLabel: 'Friday Trade symbol'
+    ariaLabel: 'Friday AI Platform symbol'
   },
   colors: {
     background: '#05070D',

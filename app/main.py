@@ -1,8 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.routes import dev_market_selection
 from app.core.config import settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        yield
+    finally:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -11,6 +22,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description="Plataforma proprietária de apoio à decisão em trading para Renan Godoy.",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -25,11 +37,12 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router, prefix=settings.api_prefix)
+    app.include_router(dev_market_selection.router)
 
     @app.get("/", tags=["Root"])
     def root() -> dict:
         return {
-            "message": "J.A.R.V.I.S AI TRADER online",
+            "message": "Friday AI Platform online",
             "version": settings.app_version,
             "docs": "/docs",
             "market_snapshot": f"{settings.api_prefix}/market/snapshot",

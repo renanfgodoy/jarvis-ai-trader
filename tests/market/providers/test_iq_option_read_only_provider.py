@@ -11,6 +11,7 @@ from app.market.persistence import CandlePersistenceService, SQLiteCandleReposit
 from app.market.providers.errors import ProviderDisabledError, ProviderValidationError
 from app.market.providers.iq_option.client import IQOptionReadOnlyClient
 from app.market.providers.iq_option.config import IQOptionProviderConfig
+from app.market.providers.iq_option.feed_quality import FeedQualityTracker, thresholds_for_raw_size
 from app.market.providers.iq_option.mapper import display_name_for_symbol, map_assets, map_candles
 from app.market.providers.iq_option.provider import IQOptionMarketDataProvider
 from app.market.providers.iq_option.runtime import IQOptionProviderRuntime
@@ -505,3 +506,102 @@ def test_provider_source_contains_no_order_function_usage() -> None:
 
     for forbidden in ["buy(", "buy_digital_spot", "buy_digital_spot_v2", "sell_option", "close_position", "reset_practice_balance"]:
         assert forbidden not in source
+
+
+def test_feed_quality_classifies_excellent_good_limited_stale_no_data_and_checking() -> None:
+    excellent = feed_quality_for_intervals(60, [1000, 1000, 1000, 1000], now_ms=20_000)
+    good = feed_quality_for_intervals(60, [5000, 5000, 5000], now_ms=25_000)
+    limited = feed_quality_for_intervals(60, [12_000, 12_000, 12_000], now_ms=45_000)
+    snapshot = feed_quality_for_intervals(60, [1000, 1000, 1000], now_ms=20_000, source_mode="SNAPSHOT")
+    stale = feed_quality_for_intervals(60, [1000, 1000, 1000], now_ms=240_000, source_mode="STALE")
+    no_data_tracker = FeedQualityTracker()
+    no_data_tracker.start(market_type="OTC", symbol="NO-DATA", raw_size=60, now_ms=0)
+    no_data = no_data_tracker.snapshot(market_type="OTC", symbol="NO-DATA", raw_size=60, now_ms=20_000)
+    checking = FeedQualityTracker().snapshot(market_type="OTC", symbol="CHECK", raw_size=60, now_ms=0)
+
+    assert excellent.classification == "EXCELLENT"
+    assert good.classification == "GOOD"
+    assert limited.classification == "LIMITED"
+    assert snapshot.classification == "LIMITED"
+    assert stale.classification == "STALE"
+    assert no_data.classification == "NO_DATA"
+    assert checking.classification == "CHECKING"
+
+
+def test_feed_quality_uses_different_timeframe_windows() -> None:
+    assert thresholds_for_raw_size(60).minimum_window_ms == 15_000
+    assert thresholds_for_raw_size(300).minimum_window_ms == 20_000
+    assert thresholds_for_raw_size(900).minimum_window_ms == 30_000
+    assert thresholds_for_raw_size(60).good_p95_ms < thresholds_for_raw_size(300).good_p95_ms < thresholds_for_raw_size(900).good_p95_ms
+
+
+def test_feed_quality_is_isolated_by_market_symbol_and_timeframe() -> None:
+    tracker = FeedQualityTracker()
+    candle = map_candles("EURUSD-OTC", 60, [{"from": 1_783_720_000, "open": 1.1, "close": 1.2, "min": 1.0, "max": 1.3}])[0]
+    tracker.start(market_type="OTC", symbol="EURUSD-OTC", raw_size=60, now_ms=0)
+    tracker.record_event(market_type="OTC", symbol="EURUSD-OTC", raw_size=60, source_mode="NEAR_REALTIME", candle=candle, now_ms=1_000)
+
+    measured = tracker.snapshot(market_type="OTC", symbol="EURUSD-OTC", raw_size=60, now_ms=2_000)
+    other_timeframe = tracker.snapshot(market_type="OTC", symbol="EURUSD-OTC", raw_size=300, now_ms=2_000)
+    other_symbol = tracker.snapshot(market_type="OTC", symbol="GBPUSD-OTC", raw_size=60, now_ms=2_000)
+
+    assert measured.events_received == 1
+    assert other_timeframe.events_received == 0
+    assert other_symbol.events_received == 0
+
+
+def test_runtime_feed_quality_does_not_create_mass_streams_or_interrupt_selected_asset() -> None:
+    provider = provider_with_fake()
+    provider.connect()
+    runtime = IQOptionProviderRuntime(provider, CandleStore(), CandleSanityGuard(min_timestamp=1_500_000_000, future_tolerance_seconds=10_000_000_000))
+    request = MarketCandleRequest(symbol="EURUSD-OTC", raw_size=60, limit=20, market_type="OTC")
+
+    runtime.load_realtime_update(request)
+    quality = runtime.feed_quality(request).sanitized()
+
+    assert quality["symbol"] == "EURUSD-OTC"
+    assert quality["events_received"] == 1
+    assert provider._client._api.started_streams == [("EURUSD-OTC", 60, 20)]
+    assert runtime.realtime_stream_status()["subscribers"] == {}
+
+
+def test_feed_quality_endpoint_is_registered_sanitized_and_runtime_guard_remains_active() -> None:
+    response = client.get("/api/v1/market/providers/iq-option/feed-quality", params={"symbol": "EURUSD-OTC", "raw_size": 60, "market_type": "OTC"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "IQ_OPTION"
+    assert payload["quality"]["classification"] in {"EXCELLENT", "GOOD", "LIMITED", "STALE", "NO_DATA", "CHECKING"}
+    assert "password" not in str(payload).lower()
+    assert "authorization" not in str(payload).lower()
+    routes = [getattr(route, "path", "") for route in app.routes if "/market/providers/iq-option" in getattr(route, "path", "")]
+    assert not any("buy" in route or "balance" in route or "order" in route for route in routes)
+
+
+def feed_quality_for_intervals(raw_size: int, intervals: list[int], *, now_ms: int, source_mode: str = "NEAR_REALTIME"):
+    tracker = FeedQualityTracker()
+    symbol = f"TEST-{raw_size}"
+    tracker.start(market_type="OTC", symbol=symbol, raw_size=raw_size, now_ms=0)
+    timestamp = 1_783_720_000
+    current_ms = 1_000
+    close = 1.2
+    tracker.record_event(
+        market_type="OTC",
+        symbol=symbol,
+        raw_size=raw_size,
+        source_mode=source_mode,
+        candle=map_candles(symbol, raw_size, [{"from": timestamp, "open": 1.1, "close": close, "min": 1.0, "max": 1.3}])[0],
+        now_ms=current_ms,
+    )
+    for index, interval in enumerate(intervals, start=1):
+        current_ms += interval
+        close += 0.001
+        tracker.record_event(
+            market_type="OTC",
+            symbol=symbol,
+            raw_size=raw_size,
+            source_mode=source_mode,
+            candle=map_candles(symbol, raw_size, [{"from": timestamp, "open": 1.1, "close": close, "min": 1.0, "max": 1.3 + index / 1000}])[0],
+            now_ms=current_ms,
+        )
+    return tracker.snapshot(market_type="OTC", symbol=symbol, raw_size=raw_size, now_ms=now_ms)

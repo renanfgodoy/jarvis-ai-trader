@@ -1,1 +1,1 @@
-"""Modelos internos do J.A.R.V.I.S AI TRADER."""
+"""Modelos internos da Friday AI Platform."""

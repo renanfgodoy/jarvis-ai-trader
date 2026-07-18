@@ -1,1 +1,1 @@
-"""J.A.R.V.I.S AI TRADER application package."""
+"""Friday AI Platform application package."""

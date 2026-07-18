@@ -1,0 +1,479 @@
+# SPRINT V5.3 — POLARIUM LIVE SOURCE AND VISUAL CHART INTEGRATION
+
+## Objetivo
+
+Conectar pela primeira vez o **Polarium Market Feed Runtime** criado na V5.2 ao gráfico já existente da Friday, utilizando apenas dados de mercado autorizados e mantendo toda a arquitetura **READ-ONLY**.
+
+Esta Sprint é exclusivamente de integração visual.
+
+Não implementar:
+
+- Scanner
+- Estratégia
+- IA
+- CALL
+- PUT
+- Entradas automáticas
+- Compra
+- Venda
+- Conta
+- Saldo
+- Portfolio
+
+---
+
+# CONTEXTO
+
+A V5.2 entregou:
+
+✓ Runtime
+
+✓ Runtime Guard
+
+✓ Parser
+
+✓ Market Router
+
+✓ CandleStore Adapter
+
+✓ FeedQuality
+
+✓ Integração com CandleStore
+
+Agora falta apenas alimentar esse Runtime com uma fonte real para validar o gráfico.
+
+---
+
+# ARQUITETURA
+
+A arquitetura obrigatória será:
+
+```
+Chrome dedicado
+
+↓
+
+Sessão autenticada
+
+↓
+
+CDP
+
+↓
+
+Market WebSocket
+
+↓
+
+candles-generated
+
+↓
+
+PolariumMarketFeedRuntime
+
+↓
+
+Market Router
+
+↓
+
+CandleStore
+
+↓
+
+Chart API existente
+
+↓
+
+RealCandleChart
+```
+
+Não criar outro gráfico.
+
+Não criar outra API.
+
+Não criar outro CandleStore.
+
+---
+
+# OBJETIVO VISUAL
+
+Ao abrir:
+
+```
+/market-chart
+```
+
+o operador deverá conseguir visualizar um gráfico alimentado pelo novo Runtime.
+
+Não haverá estratégia.
+
+Apenas candles reais.
+
+---
+
+# INTEGRAÇÃO
+
+Criar apenas a ligação:
+
+```
+Polarium Runtime
+
+↓
+
+CandleStore
+
+↓
+
+Chart API
+
+↓
+
+RealCandleChart
+```
+
+Sem alterar arquitetura existente.
+
+---
+
+# MARKET SOURCE
+
+A integração deverá utilizar exclusivamente:
+
+```
+candles-generated
+```
+
+Não utilizar Browser Bridge legado.
+
+Não utilizar polling.
+
+Não utilizar fonte paralela.
+
+---
+
+# RUNTIME GUARD
+
+Continuar obrigatório.
+
+Permitir apenas:
+
+- authenticated
+
+- timeSync
+
+- candles-generated
+
+- candle-generated
+
+- first-candles
+
+- candles
+
+- subscribe
+
+- unsubscribe
+
+- get-first-candles
+
+Todo restante:
+
+DROP
+
+---
+
+# MARKET ROUTER
+
+Confirmar:
+
+```
+active_id
+
+↓
+
+60
+
+↓
+
+300
+
+↓
+
+900
+```
+
+Cada timeframe deverá continuar independente.
+
+---
+
+# CANDLE STORE
+
+Utilizar exclusivamente o CandleStore compartilhado.
+
+Não criar cache paralelo.
+
+Não criar Store temporário.
+
+---
+
+# CHART API
+
+Reutilizar integralmente a API existente.
+
+Não criar endpoint novo.
+
+Não alterar contratos.
+
+---
+
+# REALCANDLECHART
+
+Objetivo:
+
+Quando um candle chegar ao CandleStore:
+
+↓
+
+RealCandleChart deverá atualizar automaticamente.
+
+Não utilizar polling visual.
+
+Não utilizar refresh.
+
+Não utilizar reload.
+
+---
+
+# UI
+
+Nenhuma mudança grande.
+
+Adicionar apenas um indicador discreto.
+
+Exemplo:
+
+```
+● POLARIUM CONECTADA
+```
+
+ou
+
+```
+● POLARIUM OFFLINE
+```
+
+Nada além disso.
+
+Não adicionar painéis técnicos.
+
+Não adicionar HUD.
+
+---
+
+# TESTE VISUAL
+
+Executar validação lado a lado.
+
+Polarium oficial
+
+↓
+
+Friday
+
+Durante pelo menos:
+
+```
+3 minutos
+```
+
+Confirmar:
+
+✓ mesma vela
+
+✓ mesma direção
+
+✓ mesma abertura
+
+✓ mesma máxima
+
+✓ mesma mínima
+
+✓ mesmo fechamento parcial
+
+✓ mesma virada de candle
+
+---
+
+# TROCA DE ATIVO
+
+Trocar manualmente:
+
+Ativo A
+
+↓
+
+Ativo B
+
+Confirmar:
+
+- gráfico troca
+
+- candles antigos desaparecem
+
+- novo ativo inicia corretamente
+
+- sem mistura
+
+---
+
+# TROCA DE TIMEFRAME
+
+Validar:
+
+M1
+
+↓
+
+M5
+
+↓
+
+M15
+
+Confirmar:
+
+cada timeframe utiliza apenas candles correspondentes.
+
+---
+
+# LATÊNCIA
+
+Medir:
+
+Frontend
+
+↓
+
+Render
+
+↓
+
+Chart
+
+Registrar:
+
+- p50
+
+- p95
+
+- maior gap
+
+---
+
+# TESTES
+
+Executar:
+
+pytest
+
+Build frontend
+
+Comparação visual
+
+Validação manual
+
+---
+
+# BUILD
+
+Executar:
+
+```
+npm run build
+```
+
+Resultado obrigatório:
+
+Aprovado.
+
+---
+
+# GIT
+
+Não executar:
+
+git add
+
+commit
+
+push
+
+---
+
+# ENTREGA ESPERADA
+
+O Forge deverá entregar obrigatoriamente:
+
+1. Arquivos modificados
+
+2. Fluxo completo
+
+3. Runtime conectado
+
+4. CandleStore atualizado
+
+5. Chart API utilizada
+
+6. RealCandleChart funcionando
+
+7. Resultado visual
+
+8. Comparação Friday x Polarium
+
+9. Troca de ativo
+
+10. Troca de timeframe
+
+11. Latência
+
+12. CPU
+
+13. Memória
+
+14. Testes
+
+15. Build
+
+16. git status
+
+17. git diff
+
+18. Problemas encontrados
+
+19. Riscos
+
+20. Próximos passos
+
+Não implementar Scanner.
+
+Não implementar Estratégia.
+
+Não implementar IA.
+
+Não alterar IQ Runtime.
+
+Não alterar Friday Strategy.
+
+Não alterar layout do operador.
+
+Não consultar saldo.
+
+Não consultar conta.
+
+Não consultar portfolio.
+
+Não consultar ordens.
+
+Não fazer commit.
+
+Não fazer push.

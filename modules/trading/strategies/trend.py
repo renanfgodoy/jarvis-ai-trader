@@ -1,0 +1,2 @@
+class TrendStrategy:
+    name = "Trend"

@@ -3,22 +3,19 @@ import { useEffect, useMemo, useState } from 'react';
 export type AppRoute =
   | '/login'
   | '/dashboard'
-  | '/operation'
-  | '/markets'
-  | '/market-chart'
-  | '/analysis'
-  | '/replay'
-  | '/connections/polarium'
+  | '/vision'
+  | '/history'
+  | '/risk'
+  | '/developer/core-demo'
   | '/branding'
   | '/developer/brand-center'
-  | '/labs/polarium'
   | '/settings';
 
-const routes: AppRoute[] = ['/login', '/dashboard', '/operation', '/markets', '/market-chart', '/analysis', '/replay', '/branding', '/developer/brand-center', '/settings'];
+const routes: AppRoute[] = ['/login', '/dashboard', '/vision', '/history', '/risk', '/developer/core-demo', '/branding', '/developer/brand-center', '/settings'];
 
 function normalizePath(pathname: string): AppRoute {
   if (pathname === '/branding') return '/developer/brand-center';
-  if (pathname === '/markets/data' || pathname === '/markets/intelligence') return '/markets';
+  if (pathname === '/markets/data' || pathname === '/markets/intelligence' || pathname === '/markets' || pathname === '/market-chart' || pathname === '/analysis') return '/vision';
   if (pathname === '/diagnostics') return '/dashboard';
   if (pathname === '/connections/polarium' || pathname === '/labs/polarium') return '/dashboard';
   if (pathname === '/' || pathname === '/operation') return '/dashboard';
